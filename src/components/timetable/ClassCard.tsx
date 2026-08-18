@@ -9,6 +9,8 @@ interface ClassCardProps {
   height: number;
   onEdit: (item: ClassItem) => void;
   onDelete: (id: string) => void;
+  leftPercent?: number;
+  widthPercent?: number;
 }
 
 export const ClassCard: React.FC<ClassCardProps> = ({
@@ -17,15 +19,23 @@ export const ClassCard: React.FC<ClassCardProps> = ({
   height,
   onEdit,
   onDelete,
+  leftPercent,
+  widthPercent,
 }) => {
   const isCompact = height < 48;
   const showInstructor = height >= 72;
+  const isMultiColumn = widthPercent !== undefined && widthPercent < 90;
+
+  const leftStyle = leftPercent !== undefined ? `calc(${leftPercent}% + 2px)` : '4px';
+  const widthStyle = widthPercent !== undefined ? `calc(${widthPercent}% - 4px)` : 'calc(100% - 8px)';
 
   return (
     <div
       style={{
         top: `${topOffset}px`,
         height: `${Math.max(height - 2, 28)}px`,
+        left: leftStyle,
+        width: widthStyle,
         background: 'var(--surface-primary)',
         border: '1px solid var(--border-default)',
         borderLeftWidth: '2px',
@@ -33,12 +43,12 @@ export const ClassCard: React.FC<ClassCardProps> = ({
         boxShadow: 'var(--shadow-xs)',
         borderRadius: 'var(--radius-md)',
       }}
-      className="absolute left-1 right-1 p-1.5 flex flex-col justify-between transition-all group cursor-pointer select-none overflow-hidden hover:overflow-visible"
+      className="absolute p-1.5 flex flex-col justify-between transition-all group cursor-pointer select-none overflow-hidden hover:overflow-visible"
       onClick={() => onEdit(item)}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'var(--surface-secondary)';
         e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-        e.currentTarget.style.zIndex = '30';
+        e.currentTarget.style.zIndex = '35';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'var(--surface-primary)';
@@ -54,11 +64,11 @@ export const ClassCard: React.FC<ClassCardProps> = ({
 
       {/* Top: Code + Room + Actions */}
       <div className="relative z-10 flex items-center justify-between gap-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[11px] font-semibold tracking-tight shrink-0" style={{ color: 'var(--text-primary)' }}>
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="text-[11px] font-semibold tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
             {item.code}
           </span>
-          {item.room && (
+          {item.room && !isMultiColumn && (
             <span
               className="text-[10px] px-1 py-0.5 rounded shrink-0"
               style={{
@@ -107,7 +117,7 @@ export const ClassCard: React.FC<ClassCardProps> = ({
           <h4 className="font-medium text-[10px] leading-snug line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
             {item.name}
           </h4>
-          {item.instructor && showInstructor && (
+          {item.instructor && showInstructor && !isMultiColumn && (
             <p className="text-[9px] flex items-center gap-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
               <User className="w-2 h-2 shrink-0" style={{ color: 'var(--text-muted)' }} />
               <span>{item.instructor}</span>
@@ -125,21 +135,21 @@ export const ClassCard: React.FC<ClassCardProps> = ({
           <Clock className="w-2.5 h-2.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
           <span>{format12Hour(item.startTime)} – {format12Hour(item.endTime)}</span>
         </div>
-        {item.units && (
+        {item.units && !isMultiColumn && (
           <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>
             {item.units}u
           </span>
         )}
       </div>
 
-      {/* Hover tooltip */}
+      {/* Hover tooltip popover */}
       <div
-        className="hidden group-hover:block absolute left-0 right-0 top-full mt-1.5 p-3 rounded-lg pointer-events-none animate-fade-in min-w-[200px]"
+        className="hidden group-hover:block absolute left-0 top-full mt-1.5 p-3 rounded-lg pointer-events-none animate-fade-in min-w-[220px]"
         style={{
           background: 'var(--surface-primary)',
           border: '1px solid var(--border-default)',
           boxShadow: 'var(--shadow-lg)',
-          zIndex: 40,
+          zIndex: 50,
         }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">

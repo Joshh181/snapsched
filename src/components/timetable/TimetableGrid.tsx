@@ -24,6 +24,107 @@ interface TimetableGridProps {
   onSelectVacant?: (vacant: VacantPeriod) => void;
 }
 
+interface PositionedClass {
+  item: ClassItem;
+  topOffset: number;
+  height: number;
+  leftPercent: number;
+  widthPercent: number;
+}
+
+/**
+ * Intelligent Calendar Overlap / Collision Detection Algorithm:
+ * Splits concurrent/overlapping classes into side-by-side sub-columns (like Google / Apple Calendar)
+ * instead of stacking them on top of each other.
+ */
+function calculateClassLayout(
+  dayClasses: ClassItem[],
+  startHour: number,
+  hourHeight: number
+): PositionedClass[] {
+  if (dayClasses.length === 0) return [];
+
+  // 1. Sort by start time, then by duration descending
+  const sorted = [...dayClasses].sort((a, b) => {
+    const startA = timeToMinutes(a.startTime);
+    const startB = timeToMinutes(b.startTime);
+    if (startA !== startB) return startA - startB;
+    const durA = timeToMinutes(a.endTime) - startA;
+    const durB = timeToMinutes(b.endTime) - startB;
+    return durB - durA;
+  });
+
+  // 2. Identify overlapping clusters
+  const clusters: ClassItem[][] = [];
+  let currentCluster: ClassItem[] = [];
+  let clusterEnd = -1;
+
+  for (const item of sorted) {
+    const sMin = timeToMinutes(item.startTime);
+    const eMin = timeToMinutes(item.endTime);
+
+    if (currentCluster.length === 0 || sMin < clusterEnd) {
+      currentCluster.push(item);
+      clusterEnd = Math.max(clusterEnd, eMin);
+    } else {
+      clusters.push(currentCluster);
+      currentCluster = [item];
+      clusterEnd = eMin;
+    }
+  }
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
+
+  // 3. For each cluster, allocate side-by-side columns
+  const results: PositionedClass[] = [];
+
+  for (const cluster of clusters) {
+    const columns: ClassItem[][] = [];
+
+    for (const item of cluster) {
+      const sMin = timeToMinutes(item.startTime);
+      let placed = false;
+
+      for (let colIdx = 0; colIdx < columns.length; colIdx++) {
+        const lastInCol = columns[colIdx][columns[colIdx].length - 1];
+        if (timeToMinutes(lastInCol.endTime) <= sMin) {
+          columns[colIdx].push(item);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        columns.push([item]);
+      }
+    }
+
+    const totalCols = columns.length;
+
+    columns.forEach((col, colIdx) => {
+      col.forEach((item) => {
+        const startMin = timeToMinutes(item.startTime);
+        const endMin = timeToMinutes(item.endTime);
+        const topOffset = ((startMin - startHour * 60) / 60) * hourHeight;
+        const height = ((endMin - startMin) / 60) * hourHeight;
+        const leftPercent = (colIdx / totalCols) * 100;
+        const widthPercent = (1 / totalCols) * 100;
+
+        results.push({
+          item,
+          topOffset,
+          height,
+          leftPercent,
+          widthPercent,
+        });
+      });
+    });
+  }
+
+  return results;
+}
+
 export const TimetableGrid: React.FC<TimetableGridProps> = ({
   classes,
   vacantPeriods,
@@ -362,6 +463,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                     const isToday = d.key === todayAbbr;
                     const dayClasses = classes.filter((c) => c.days.includes(d.key));
                     const dayVacant = vacantPeriods.filter((v) => v.day === d.key);
+                    const positionedClasses = calculateClassLayout(dayClasses, startHour, hourHeight);
 
                     return (
                       <div
@@ -379,23 +481,21 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                           />
                         ))}
 
-                        {dayClasses.map((item) => {
-                          const startMin = timeToMinutes(item.startTime);
-                          const endMin = timeToMinutes(item.endTime);
-                          const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
-                          const h = ((endMin - startMin) / 60) * hourHeight;
-                          return (
-                            <ClassCard
-                              key={item.id}
-                              item={item}
-                              topOffset={topOff}
-                              height={h}
-                              onEdit={onEditClass}
-                              onDelete={onDeleteClass}
-                            />
-                          );
-                        })}
+                        {/* Positioned Classes with collision resolution */}
+                        {positionedClasses.map((pos) => (
+                          <ClassCard
+                            key={pos.item.id}
+                            item={pos.item}
+                            topOffset={pos.topOffset}
+                            height={pos.height}
+                            leftPercent={pos.leftPercent}
+                            widthPercent={pos.widthPercent}
+                            onEdit={onEditClass}
+                            onDelete={onDeleteClass}
+                          />
+                        ))}
 
+                        {/* Vacant periods */}
                         {dayVacant.map((vacant) => {
                           const startMin = timeToMinutes(vacant.startTime);
                           const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
@@ -485,7 +585,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   ))}
                 </div>
 
-                {/* Single day column */}
+                {/* Single day column with collision resolution */}
                 <div className="relative">
                   {hours.map((hour) => (
                     <div
@@ -494,22 +594,22 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                     />
                   ))}
 
-                  {classes.filter(c => c.days.includes(mobileDay.key)).map((item) => {
-                    const startMin = timeToMinutes(item.startTime);
-                    const endMin = timeToMinutes(item.endTime);
-                    const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
-                    const h = ((endMin - startMin) / 60) * hourHeight;
-                    return (
-                      <ClassCard
-                        key={item.id}
-                        item={item}
-                        topOffset={topOff}
-                        height={h}
-                        onEdit={onEditClass}
-                        onDelete={onDeleteClass}
-                      />
-                    );
-                  })}
+                  {calculateClassLayout(
+                    classes.filter(c => c.days.includes(mobileDay.key)),
+                    startHour,
+                    hourHeight
+                  ).map((pos) => (
+                    <ClassCard
+                      key={pos.item.id}
+                      item={pos.item}
+                      topOffset={pos.topOffset}
+                      height={pos.height}
+                      leftPercent={pos.leftPercent}
+                      widthPercent={pos.widthPercent}
+                      onEdit={onEditClass}
+                      onDelete={onDeleteClass}
+                    />
+                  ))}
 
                   {vacantPeriods.filter(v => v.day === mobileDay.key).map((vacant) => {
                     const startMin = timeToMinutes(vacant.startTime);
