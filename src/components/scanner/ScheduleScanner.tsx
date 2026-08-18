@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  ScanLine,
   Upload,
   AlertCircle,
   Sparkles,
+  FileSpreadsheet,
+  CheckCircle2,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { geminiService } from '../../services/geminiService';
 import { OcrParsedClass } from '../../types/schedule';
 import { OcrReviewTable } from './OcrReviewTable';
@@ -15,36 +15,34 @@ interface ScheduleScannerProps {
   onOpenSettings?: () => void;
 }
 
-const SCAN_STAGES = [
-  { text: 'Enhancing document clarity & contrast...', progress: 25 },
-  { text: 'Detecting schedule grid & day columns...', progress: 55 },
-  { text: 'Extracting course codes, rooms & faculty...', progress: 80 },
-  { text: 'Formatting 24-hour academic timetable...', progress: 95 },
-];
-
 export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
   onImportClasses,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentStageIdx, setCurrentStageIdx] = useState(0);
+  const [progress, setProgress] = useState(15);
   const [parsedResults, setParsedResults] = useState<OcrParsedClass[] | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ name: string; previewUrl?: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSuccessFlash, setIsSuccessFlash] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Dynamic stage ticker interval while processing
+  // Smooth, gradual progress estimation while AI is thinking
   useEffect(() => {
-    let timer: any = null;
+    let interval: any = null;
     if (isProcessing) {
-      setCurrentStageIdx(0);
-      timer = setInterval(() => {
-        setCurrentStageIdx((prev) => (prev < SCAN_STAGES.length - 1 ? prev + 1 : prev));
-      }, 1400);
+      setProgress(15);
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 92) return prev;
+          const increment = Math.max(1, Math.floor((95 - prev) / 6));
+          return prev + increment;
+        });
+      }, 400);
+    } else {
+      setProgress(100);
     }
-    return () => clearInterval(timer);
+    return () => clearInterval(interval);
   }, [isProcessing]);
 
   const handleFileSelect = async (file: File) => {
@@ -56,7 +54,6 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
     });
     setErrorMessage(null);
     setIsProcessing(true);
-    setIsSuccessFlash(false);
 
     try {
       if (file.type.startsWith('image/')) {
@@ -68,9 +65,9 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
               base64Image: base64Data,
               mimeType: file.type,
             });
-            triggerSuccess(results);
+            finishProcessing(results);
           } catch (e: any) {
-            setErrorMessage(e.message || 'Failed to parse image.');
+            setErrorMessage(e.message || 'Failed to parse timetable image.');
             setIsProcessing(false);
           }
         };
@@ -78,7 +75,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
       } else {
         const text = await file.text();
         const results = await geminiService.parseScheduleDocument({ text });
-        triggerSuccess(results);
+        finishProcessing(results);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to process document.');
@@ -86,22 +83,12 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
     }
   };
 
-  const triggerSuccess = (results: OcrParsedClass[]) => {
-    setIsSuccessFlash(true);
-    try {
-      confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#4f46e5', '#6366f1', '#06b6d4', '#10b981', '#f59e0b'],
-      });
-    } catch (e) {}
-
+  const finishProcessing = (results: OcrParsedClass[]) => {
+    setProgress(100);
     setTimeout(() => {
       setIsProcessing(false);
       setParsedResults(results);
-      setIsSuccessFlash(false);
-    }, 600);
+    }, 450);
   };
 
   const handleToggleSelect = (id: string) => {
@@ -125,12 +112,9 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
     const selected = parsedResults.filter((i) => i.selected);
     if (selected.length === 0) return;
     onImportClasses(selected, replace);
-    try { confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } }); } catch (e) {}
     setParsedResults(null);
     setSelectedFile(null);
   };
-
-  const currentStage = SCAN_STAGES[currentStageIdx];
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto select-none animate-fade-in">
@@ -140,29 +124,24 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
         style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
       >
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-[16px]" style={{ color: 'var(--text-primary)' }}>
-              Schedule Scanner
-            </h2>
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1" style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)' }}>
-              <Sparkles className="w-3 h-3 text-indigo-600" />
-              Gemini Vision AI
-            </span>
-          </div>
+          <h2 className="font-semibold text-[16px]" style={{ color: 'var(--text-primary)' }}>
+            Schedule Scanner
+          </h2>
           <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Upload your COR image or timetable photo to automatically extract all classes.
+            Upload your Certificate of Registration (COR) or schedule photo to automatically build your timetable.
           </p>
         </div>
         <div
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
-          style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+          style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)' }}
         >
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--status-success)' }} />
-          OCR Engine Ready
+          <Sparkles className="w-3.5 h-3.5" />
+          Powered by Gemini Vision
         </div>
       </div>
 
       {parsedResults ? (
+        /* ── STEP 2: REVIEW & EDIT EXTRACTED CLASSES ── */
         <OcrReviewTable
           items={parsedResults}
           onToggleSelect={handleToggleSelect}
@@ -173,148 +152,114 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
           onReset={() => { setParsedResults(null); setSelectedFile(null); }}
         />
       ) : (
-        <div className="space-y-4">
-          {/* Main Scanner Stage */}
+        /* ── STEP 1: UPLOAD OR ACTIVE PROCESSING STATE ── */
+        <div className="space-y-3">
           {isProcessing ? (
-            /* ── HOLOGRAPHIC LASER SCANNER ACTIVE STATE ── */
+            /* ── PROFESSIONAL DARK SLATE STUDIO SCANNER ── */
             <div
-              className="relative rounded-xl overflow-hidden p-6 md:p-8 flex flex-col items-center justify-center min-h-[380px] select-none"
+              className="rounded-2xl p-8 flex flex-col items-center justify-center relative overflow-hidden transition-all animate-fade-in"
               style={{
-                background: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)',
-                border: '1px solid #4338ca',
-                boxShadow: '0 10px 30px -5px rgba(79, 70, 229, 0.3)',
+                background: '#090d16',
+                border: '1px solid #1e293b',
+                boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 50px rgba(79, 70, 229, 0.1)',
+                minHeight: '380px',
               }}
             >
-              {/* Subtle Matrix Grid Overlay */}
+              {/* Subtle Ambient Radial Lighting */}
               <div
-                className="absolute inset-0 pointer-events-none opacity-20"
+                className="absolute inset-0 pointer-events-none animate-ambient-pulse"
                 style={{
-                  backgroundImage: `linear-gradient(to right, rgba(99, 102, 241, 0.2) 1px, transparent 1px),
-                                    linear-gradient(to bottom, rgba(99, 102, 241, 0.2) 1px, transparent 1px)`,
-                  backgroundSize: '24px 24px',
+                  background: 'radial-gradient(circle at 50% 40%, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
                 }}
               />
 
-              {/* HUD Header Status */}
-              <div className="relative z-20 flex items-center justify-between w-full max-w-md px-2 mb-4 text-[11px] font-mono text-indigo-300/80">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                  <span className="font-semibold tracking-wider uppercase">DEEP SCAN ACTIVE</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>LATENCY: 34ms</span>
-                  <span>·</span>
-                  <span className="text-cyan-300">GEMINI VISION</span>
-                </div>
-              </div>
-
-              {/* Holographic Document Container with Scanning Laser */}
+              {/* Centered Document Frame with Light Beam */}
               <div
-                className="relative z-10 w-full max-w-sm h-56 rounded-lg overflow-hidden flex items-center justify-center"
+                className="relative z-10 w-full max-w-sm h-60 rounded-xl overflow-hidden flex items-center justify-center"
                 style={{
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1px solid rgba(99, 102, 241, 0.4)',
-                  boxShadow: '0 0 20px rgba(99, 102, 241, 0.25)',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05)',
                 }}
               >
-                {/* 4 Corner HUD Reticles */}
-                <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-cyan-400 z-30 pointer-events-none" />
-                <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-cyan-400 z-30 pointer-events-none" />
-                <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-cyan-400 z-30 pointer-events-none" />
-                <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-cyan-400 z-30 pointer-events-none" />
-
-                {/* Uploaded image preview OR mock document wireframe */}
+                {/* Uploaded document preview OR subtle document placeholder */}
                 {selectedFile?.previewUrl ? (
                   <img
                     src={selectedFile.previewUrl}
-                    alt="Scanning preview"
-                    className="w-full h-full object-cover opacity-60 filter contrast-125 brightness-90"
+                    alt="Schedule document"
+                    className="w-full h-full object-contain filter contrast-105 brightness-95"
                   />
                 ) : (
-                  <div className="w-full h-full p-4 flex flex-col justify-between opacity-50">
+                  <div className="w-full h-full p-6 flex flex-col justify-between opacity-40">
                     <div className="space-y-2">
-                      <div className="h-3 w-3/4 bg-indigo-400/40 rounded animate-pulse" />
-                      <div className="h-2.5 w-1/2 bg-indigo-400/20 rounded" />
-                      <div className="grid grid-cols-3 gap-2 pt-2">
-                        <div className="h-4 bg-indigo-400/25 rounded" />
-                        <div className="h-4 bg-indigo-400/25 rounded" />
-                        <div className="h-4 bg-indigo-400/25 rounded" />
+                      <div className="h-3 w-2/3 bg-slate-600 rounded" />
+                      <div className="h-2 w-1/2 bg-slate-700 rounded" />
+                      <div className="grid grid-cols-3 gap-2 pt-4">
+                        <div className="h-5 bg-slate-700 rounded" />
+                        <div className="h-5 bg-slate-700 rounded" />
+                        <div className="h-5 bg-slate-700 rounded" />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <div className="h-2 w-full bg-indigo-400/20 rounded" />
-                      <div className="h-2 w-5/6 bg-indigo-400/20 rounded" />
-                      <div className="h-2 w-4/6 bg-indigo-400/20 rounded" />
+                      <div className="h-2 w-full bg-slate-700 rounded" />
+                      <div className="h-2 w-5/6 bg-slate-700 rounded" />
                     </div>
                   </div>
                 )}
 
-                {/* Animated OCR Target Bounding Boxes */}
-                <div className="absolute top-8 left-8 w-28 h-6 border border-cyan-400/70 bg-cyan-500/10 rounded animate-ocr-box pointer-events-none z-20 flex items-center justify-between px-1">
-                  <span className="text-[8px] font-mono text-cyan-300 font-bold">SUBJ_DETECTED</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                </div>
-                <div className="absolute bottom-12 right-6 w-32 h-6 border border-indigo-400/70 bg-indigo-500/10 rounded animate-ocr-box pointer-events-none z-20 flex items-center justify-between px-1" style={{ animationDelay: '0.9s' }}>
-                  <span className="text-[8px] font-mono text-indigo-300 font-bold">TIME_MATRIX</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                </div>
-
-                {/* ── Holographic Sweeping Laser Beam ── */}
-                <div className="absolute left-0 right-0 z-30 pointer-events-none animate-laser-sweep">
-                  {/* Laser line */}
+                {/* ── Fluid Glowing Light Beam Sweep ── */}
+                <div className="absolute left-0 right-0 z-30 pointer-events-none animate-scan-beam">
+                  {/* Crisp light line */}
                   <div
-                    className="w-full h-[2.5px]"
+                    className="w-full h-[2px]"
                     style={{
-                      background: 'linear-gradient(90deg, rgba(6,182,212,0.2) 0%, rgba(6,182,212,1) 20%, rgba(99,102,241,1) 50%, rgba(6,182,212,1) 80%, rgba(6,182,212,0.2) 100%)',
-                      boxShadow: '0 0 12px 3px rgba(6, 182, 212, 0.75), 0 0 24px 6px rgba(99, 102, 241, 0.5)',
+                      background: 'linear-gradient(90deg, rgba(99,102,241,0.1) 0%, rgba(129,140,248,1) 30%, rgba(192,132,252,1) 50%, rgba(129,140,248,1) 70%, rgba(99,102,241,0.1) 100%)',
+                      boxShadow: '0 0 14px 2px rgba(129, 140, 248, 0.8), 0 0 28px 4px rgba(99, 102, 241, 0.4)',
                     }}
                   />
-                  {/* Trailing laser glow bloom */}
+                  {/* Subtle ambient light bloom */}
                   <div
-                    className="w-full h-12 -mt-12"
+                    className="w-full h-10 -mt-10"
                     style={{
-                      background: 'linear-gradient(to top, rgba(6, 182, 212, 0.25), transparent)',
+                      background: 'linear-gradient(to top, rgba(99, 102, 241, 0.18), transparent)',
                     }}
                   />
                 </div>
-
-                {/* Flash light overlay on success */}
-                {isSuccessFlash && (
-                  <div className="absolute inset-0 bg-white z-40 animate-flash-expand pointer-events-none" />
-                )}
               </div>
 
-              {/* Dynamic Stage Ticker & Progress */}
-              <div className="relative z-20 w-full max-w-sm mt-5 space-y-2">
+              {/* Minimal Progress & Status */}
+              <div className="relative z-20 w-full max-w-sm mt-6 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-indigo-200 font-medium">
-                    <ScanLine className="w-4 h-4 text-cyan-400 animate-spin" />
-                    <span>{currentStage.text}</span>
+                  <div className="flex items-center gap-2 text-slate-300 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                    <span>Analyzing schedule document</span>
                   </div>
-                  <span className="font-mono text-cyan-300 tabular-nums font-semibold">
-                    {currentStage.progress}%
+                  <span className="font-mono text-indigo-300 font-semibold tabular-nums">
+                    {progress}%
                   </span>
                 </div>
 
-                {/* Sleek Gradient Progress Bar */}
-                <div className="w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden border border-indigo-900/60">
+                {/* Refined Progress Bar */}
+                <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden border border-slate-700/60">
                   <div
-                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    className="h-full rounded-full transition-all duration-300 ease-out"
                     style={{
-                      width: `${currentStage.progress}%`,
-                      background: 'linear-gradient(90deg, #06b6d4 0%, #6366f1 50%, #a855f7 100%)',
-                      boxShadow: '0 0 10px rgba(99, 102, 241, 0.8)',
+                      width: `${progress}%`,
+                      background: 'linear-gradient(90deg, #4f46e5 0%, #818cf8 50%, #c084fc 100%)',
+                      boxShadow: '0 0 8px rgba(129, 140, 248, 0.6)',
                     }}
                   />
                 </div>
 
-                <div className="text-[11px] font-mono text-center text-indigo-300/60 pt-1">
-                  Parsing {selectedFile?.name || 'document'} with Google Gemini
-                </div>
+                {selectedFile?.name && (
+                  <p className="text-[11px] text-slate-400 text-center truncate pt-0.5">
+                    {selectedFile.name}
+                  </p>
+                )}
               </div>
             </div>
           ) : (
-            /* ── DEFAULT UPLOAD DROPZONE ── */
+            /* ── CLEAN UPLOAD DROPZONE ── */
             <div
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
@@ -322,7 +267,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
                 e.preventDefault(); setIsDragging(false);
                 if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0]);
               }}
-              className="rounded-xl p-10 text-center cursor-pointer transition-all group"
+              className="rounded-xl p-12 text-center cursor-pointer transition-all group"
               style={{
                 background: isDragging ? 'var(--brand-50)' : 'var(--surface-primary)',
                 border: isDragging ? '2px dashed var(--brand-500)' : '2px dashed var(--border-strong)',
@@ -335,7 +280,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
                 onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]); }}
               />
 
-              <div className="space-y-3.5">
+              <div className="space-y-4">
                 <div
                   className="w-12 h-12 rounded-xl mx-auto flex items-center justify-center transition-transform group-hover:scale-105"
                   style={{
@@ -351,8 +296,8 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
                   <h3 className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>
                     Drop your COR or schedule photo here
                   </h3>
-                  <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                    Supports PNG, JPG, JPEG, PDF, or text slips
+                  <p className="text-[13px] mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    Supports PNG, JPG, JPEG, PDF, or document slips
                   </p>
                 </div>
                 <div>
@@ -361,7 +306,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium text-[13px] transition-all hover:opacity-95"
                     style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
                   >
-                    <ScanLine className="w-4 h-4" />
+                    <FileSpreadsheet className="w-4 h-4" />
                     Select Timetable Photo
                   </button>
                 </div>
