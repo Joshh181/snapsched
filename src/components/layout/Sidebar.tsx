@@ -101,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Top section */}
         <div className="flex flex-col min-h-0">
           {/* Brand header */}
-          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-white"

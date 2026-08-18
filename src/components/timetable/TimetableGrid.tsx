@@ -266,7 +266,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
       {/* ── Category Pill Bar ── */}
       <div
         className="p-2 rounded-lg flex items-center justify-between gap-2 overflow-x-auto"
-        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-xs)' }}
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
       >
         <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
           <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-1 flex items-center gap-1 text-slate-400 shrink-0">
@@ -287,7 +287,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                 style={{
                   background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
                   color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
-                  border: isSelected ? '1px solid var(--brand-300)' : '1px solid transparent',
+                  border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
                   fontWeight: isSelected ? 600 : 500,
                 }}
               >
@@ -310,7 +310,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </div>
 
         {/* Category Actions: Clear Category & Add Category */}
-        <div className="shrink-0 flex items-center gap-1.5 pl-2">
+        <div className="shrink-0 pl-1 border-l flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
           {filteredClasses.length > 0 && (
             <button
               onClick={() => {

@@ -99,9 +99,8 @@ export const Header: React.FC<HeaderProps> = ({
       className="h-14 px-4 flex items-center justify-between sticky top-0 select-none"
       style={{
         background: 'var(--surface-primary)',
-        borderBottom: '1px solid var(--border-default)',
+        borderBottom: '1px solid var(--border-subtle)',
         zIndex: 'var(--z-header)',
-        boxShadow: 'var(--shadow-xs)',
       }}
     >
       {/* Left: Mobile menu + Status */}
