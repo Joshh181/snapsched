@@ -45,12 +45,16 @@ export function App() {
     resetToSample,
   } = useSchedule();
 
+  const currentCategoryClasses = classes.filter(
+    (c) => (c.category || 'School').toLowerCase() === selectedCategory.toLowerCase()
+  );
+
   const {
     allVacantPeriods,
     todayAbbr,
     currentStatus,
     currentTime,
-  } = useVacantPeriods(classes);
+  } = useVacantPeriods(currentCategoryClasses);
 
   // Close sidebar on window resize to desktop
   useEffect(() => {
@@ -184,11 +188,17 @@ export function App() {
                 <VacantBreakPlanner
                   vacantPeriods={allVacantPeriods}
                   selectedVacant={targetVacantForPlanner}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
                 />
               )}
 
               {activeTab === 'compare' && (
-                <ScheduleCompare userSchedule={schedule} />
+                <ScheduleCompare
+                  userSchedule={schedule}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
+                />
               )}
 
               {activeTab === 'settings' && (

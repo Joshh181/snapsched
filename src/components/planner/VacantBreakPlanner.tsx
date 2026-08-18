@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Coffee,
   Clock,
@@ -9,14 +9,18 @@ import {
   Plus,
   Trash2,
   Sparkles,
+  Tag,
 } from 'lucide-react';
-import { VacantPeriod, DAYS_OF_WEEK } from '../../types/schedule';
+import { VacantPeriod, DAYS_OF_WEEK, CategoryItem } from '../../types/schedule';
 import { format12Hour } from '../../hooks/useVacantPeriods';
 import { FocusTimer } from './FocusTimer';
+import { storageService } from '../../services/storageService';
 
 interface VacantBreakPlannerProps {
   vacantPeriods: VacantPeriod[];
   selectedVacant?: VacantPeriod | null;
+  selectedCategory?: string;
+  onSelectCategory?: (category: string) => void;
 }
 
 interface CustomTask {
@@ -28,12 +32,23 @@ interface CustomTask {
 export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
   vacantPeriods,
   selectedVacant,
+  selectedCategory = 'School',
+  onSelectCategory,
 }) => {
+  const [categories] = useState<CategoryItem[]>(() => storageService.getCategories());
   const [activeBreak, setActiveBreak] = useState<VacantPeriod | null>(
     selectedVacant || vacantPeriods[0] || null
   );
   const [customTasks, setCustomTasks] = useState<Record<string, CustomTask[]>>({});
   const [newTaskInput, setNewTaskInput] = useState('');
+
+  useEffect(() => {
+    if (selectedVacant) {
+      setActiveBreak(selectedVacant);
+    } else if (!vacantPeriods.some((v) => v.id === activeBreak?.id)) {
+      setActiveBreak(vacantPeriods[0] || null);
+    }
+  }, [vacantPeriods, selectedVacant]);
 
   const getSuggestedActivities = (durationMins: number) => {
     if (durationMins <= 45) {
@@ -99,21 +114,51 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
             Study Planner
           </h2>
           <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Turn free periods into productive study sessions.
+            Turn free intervals in your <strong>{selectedCategory}</strong> schedule into focused sessions.
             <span
               className="inline-flex items-center ml-2 px-2 py-0.5 rounded-md text-[12px] font-medium"
               style={{ background: 'var(--status-warning-bg)', color: '#92400e', border: '1px solid var(--status-warning-border)' }}
             >
-              {vacantPeriods.length} free periods detected
+              {vacantPeriods.length} free periods in {selectedCategory}
             </span>
           </p>
         </div>
         <div className="text-right">
-          <div className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>Weekly free time</div>
+          <div className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>Weekly free time ({selectedCategory})</div>
           <div className="font-semibold text-[15px] tabular-nums" style={{ color: 'var(--text-primary)' }}>
             {totalBreaksHours} hours
           </div>
         </div>
+      </div>
+
+      {/* Category Pill Bar */}
+      <div
+        className="p-2 rounded-lg flex items-center gap-1.5 overflow-x-auto"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
+        <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-1 flex items-center gap-1 text-slate-400 shrink-0">
+          <Tag className="w-3 h-3 text-slate-400" />
+          Category:
+        </span>
+        {categories.map((cat) => {
+          const isSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+          return (
+            <button
+              key={cat.id}
+              onClick={() => onSelectCategory?.(cat.name)}
+              className="px-3 py-1 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5 shrink-0"
+              style={{
+                background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
+                border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                fontWeight: isSelected ? 600 : 500,
+              }}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+              <span>{cat.name}</span>
+            </button>
+          );
+        })}
       </div>
 
       {vacantPeriods.length === 0 ? (
@@ -122,8 +167,12 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
           style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)' }}
         >
           <Coffee className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-          <p className="text-[14px] font-medium" style={{ color: 'var(--text-secondary)' }}>No free periods detected</p>
-          <p className="text-[13px] mt-1" style={{ color: 'var(--text-tertiary)' }}>Add classes with time gaps to enable the study planner.</p>
+          <p className="text-[14px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            No free intervals detected in {selectedCategory}
+          </p>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            Add at least 2 classes with time gaps on the same day in <strong>{selectedCategory}</strong> to calculate study breaks.
+          </p>
         </div>
       ) : (
         <>
@@ -134,7 +183,7 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
           >
             <div className="flex items-center justify-between px-1">
               <span className="text-[12px] font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                Select a free period
+                Select a free period in {selectedCategory}
               </span>
               {activeBreak && (
                 <span className="text-[12px]" style={{ color: 'var(--status-warning)' }}>
@@ -201,52 +250,46 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
                   style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
                 >
                   <div>
-                    <div className="flex items-center justify-between pb-2 mb-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--brand-600)' }} />
-                        <h4 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
-                          Session Checklist
-                        </h4>
-                      </div>
-                      <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-                        {activeTasks.filter((t) => t.done).length}/{activeTasks.length}
-                      </span>
-                    </div>
+                    <h3 className="font-semibold text-[14px] mb-1" style={{ color: 'var(--text-primary)' }}>
+                      Tasks for this break
+                    </h3>
+                    <p className="text-[12px] mb-3" style={{ color: 'var(--text-tertiary)' }}>
+                      Keep track of specific goals during this {activeBreak.durationFormatted} window.
+                    </p>
 
-                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
+                    {/* Task list */}
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto mb-3 pr-1">
                       {activeTasks.length === 0 ? (
-                        <p className="text-[13px] py-3 text-center" style={{ color: 'var(--text-muted)' }}>
-                          No tasks yet. Add one below.
+                        <p className="text-[12px] italic py-2" style={{ color: 'var(--text-muted)' }}>
+                          No tasks created yet for this break slot.
                         </p>
                       ) : (
-                        activeTasks.map((t) => (
+                        activeTasks.map((task) => (
                           <div
-                            key={t.id}
-                            className="flex items-center justify-between p-2 rounded-lg text-[13px] group"
-                            style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
+                            key={task.id}
+                            className="flex items-center justify-between gap-2 p-2 rounded-md transition-colors"
+                            style={{ background: 'var(--surface-secondary)' }}
                           >
-                            <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
+                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                               <input
                                 type="checkbox"
-                                checked={t.done}
-                                onChange={() => toggleTask(activeBreak.id, t.id)}
-                                className="w-4 h-4 rounded cursor-pointer accent-[var(--brand-600)]"
+                                checked={task.done}
+                                onChange={() => toggleTask(activeBreak.id, task.id)}
+                                className="w-4 h-4 rounded cursor-pointer accent-indigo-600"
                               />
                               <span
-                                className="truncate"
+                                className="text-[13px] truncate"
                                 style={{
-                                  color: t.done ? 'var(--text-muted)' : 'var(--text-primary)',
-                                  textDecoration: t.done ? 'line-through' : 'none',
+                                  textDecoration: task.done ? 'line-through' : 'none',
+                                  color: task.done ? 'var(--text-muted)' : 'var(--text-primary)',
                                 }}
                               >
-                                {t.text}
+                                {task.text}
                               </span>
                             </label>
                             <button
-                              onClick={() => deleteTask(activeBreak.id, t.id)}
-                              className="p-1 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-red-50"
-                              title="Delete task"
-                              style={{ color: 'var(--text-muted)' }}
+                              onClick={() => deleteTask(activeBreak.id, task.id)}
+                              className="p-1 text-slate-400 hover:text-red-500 rounded"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -256,21 +299,22 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
                     </div>
                   </div>
 
-                  <form onSubmit={handleAddTask} className="flex gap-2 pt-3 mt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  {/* Add task form */}
+                  <form onSubmit={handleAddTask} className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                     <input
                       type="text"
                       value={newTaskInput}
                       onChange={(e) => setNewTaskInput(e.target.value)}
-                      placeholder="Add a study objective..."
-                      className="flex-1 text-[13px] px-3 py-2 rounded-lg focus:outline-none"
-                      style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                      placeholder="Add a study goal..."
+                      className="flex-1 px-3 py-1.5 text-[13px] rounded-lg border focus:outline-none"
+                      style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                     />
                     <button
                       type="submit"
-                      className="px-3 py-2 rounded-lg text-white text-[13px] font-medium transition-colors flex items-center gap-1"
-                      style={{ background: 'var(--text-primary)', boxShadow: 'var(--shadow-xs)' }}
+                      className="px-3 py-1.5 rounded-lg text-white font-medium text-[13px] flex items-center gap-1 shrink-0"
+                      style={{ background: 'var(--brand-600)' }}
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3.5 h-3.5" />
                       Add
                     </button>
                   </form>
@@ -278,26 +322,32 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
 
                 {/* Suggestions */}
                 <div
-                  className="p-3 rounded-lg space-y-2"
+                  className="p-4 rounded-lg"
                   style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
                 >
-                  <div className="text-[12px] font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                    Suggested for {activeBreak.durationFormatted}
-                  </div>
+                  <h4 className="font-semibold text-[13px] mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Recommended for {activeBreak.durationFormatted}
+                  </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {currentSuggestions.map((sug, idx) => {
                       const Icon = sug.icon;
                       return (
                         <div
                           key={idx}
-                          className="p-3 rounded-lg space-y-1"
-                          style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
+                          className="p-2.5 rounded-lg flex items-start gap-2.5"
+                          style={{ background: 'var(--surface-secondary)' }}
                         >
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--status-warning)' }} />
-                            <h4 className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>{sug.title}</h4>
+                          <div className="w-7 h-7 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                            <Icon className="w-4 h-4" />
                           </div>
-                          <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{sug.desc}</p>
+                          <div>
+                            <div className="font-semibold text-[12px]" style={{ color: 'var(--text-primary)' }}>
+                              {sug.title}
+                            </div>
+                            <p className="text-[11px] mt-0.5 leading-snug" style={{ color: 'var(--text-secondary)' }}>
+                              {sug.desc}
+                            </p>
+                          </div>
                         </div>
                       );
                     })}
