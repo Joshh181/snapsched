@@ -5,6 +5,7 @@ import {
   Menu,
   Sparkles,
   Calendar as CalendarIcon,
+  BookOpen,
 } from 'lucide-react';
 import { ScheduleSet } from '../../types/schedule';
 
@@ -103,28 +104,45 @@ export const Header: React.FC<HeaderProps> = ({
   const status = getStatusConfig();
 
   return (
-    <header className="px-4 py-4 md:px-6 md:py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
-      {/* Left: Greeting & Subtitle */}
-      <div className="flex items-center gap-3 min-w-0">
-        {/* Mobile Hamburger */}
+    <header className="px-3 py-3 md:px-6 md:py-4 flex flex-col gap-3 select-none">
+      {/* Mobile Top Nav: Logo on the left, Menu button on the right */}
+      <div className="flex items-center justify-between w-full lg:hidden">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs"
+            style={{
+              background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+            }}
+          >
+            <BookOpen className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[15px] tracking-tight text-slate-900">
+              SnapSched
+            </div>
+          </div>
+        </div>
+
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-2 -ml-2 rounded-xl hover:bg-white/80 transition-colors shrink-0 text-slate-600"
+          className="p-2 rounded-xl bg-white shadow-xs border border-white/80 hover:bg-slate-50 transition-colors text-slate-600"
           aria-label="Open navigation"
         >
           <Menu className="w-5 h-5" />
         </button>
+      </div>
 
-        {/* Greeting + Subtitle */}
+      {/* Main Row: Greeting on Left & Actions/Status on Right */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Left: Clean Greeting & Subtitle */}
         <div className="min-w-0">
-          <h1 className="text-[20px] md:text-[22px] font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>{greeting}</span>
+          <h1 className="text-[22px] md:text-[24px] font-bold tracking-tight text-slate-900">
+            {greeting}
           </h1>
           <p className="text-[13px] text-slate-500 font-medium truncate mt-0.5">
             Here's your day at a glance.
           </p>
         </div>
-      </div>
 
       {/* Right: Floating Status Pill + Time Badge + Add Class Action */}
       <div className="flex items-center gap-2.5 flex-wrap md:flex-nowrap shrink-0">
@@ -176,6 +194,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Add Class</span>
         </button>
       </div>
-    </header>
-  );
+    </div>
+  </header>
+);
 };
