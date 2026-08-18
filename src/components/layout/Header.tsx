@@ -3,8 +3,6 @@ import {
   Clock,
   Plus,
   Menu,
-  Sparkles,
-  Calendar as CalendarIcon,
   BookOpen,
 } from 'lucide-react';
 import { ScheduleSet } from '../../types/schedule';
@@ -30,9 +28,6 @@ export const Header: React.FC<HeaderProps> = ({
   currentStatus,
   currentTime,
 }) => {
-  const studentName = schedule.studentName || 'Josh';
-  const initial = studentName.charAt(0).toUpperCase() || 'J';
-
   const hour = currentTime.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -104,45 +99,52 @@ export const Header: React.FC<HeaderProps> = ({
   const status = getStatusConfig();
 
   return (
-    <header className="px-3 py-3 md:px-6 md:py-4 flex flex-col gap-3 select-none">
-      {/* Mobile Top Nav: Logo on the left, Menu button on the right */}
-      <div className="flex items-center justify-between w-full lg:hidden">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs"
-            style={{
-              background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
-            }}
-          >
-            <BookOpen className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="font-bold text-[15px] tracking-tight text-slate-900">
-              SnapSched
-            </div>
-          </div>
-        </div>
-
+    <header className="w-full max-w-[1500px] mx-auto px-4 pt-4 pb-2 md:px-6 md:pt-6 flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
+      {/* Far Left: SnapSched Brand Logo & Greeting Header */}
+      <div className="flex items-center gap-4 min-w-0">
+        {/* Mobile Hamburger Menu */}
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-xl bg-white shadow-xs border border-white/80 hover:bg-slate-50 transition-colors text-slate-600"
+          className="lg:hidden p-2 rounded-2xl bg-white shadow-xs border border-white/80 hover:bg-slate-50 transition-colors text-slate-600 shrink-0"
           aria-label="Open navigation"
         >
           <Menu className="w-5 h-5" />
         </button>
-      </div>
 
-      {/* Main Row: Greeting on Left & Actions/Status on Right */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Left: Clean Greeting & Subtitle */}
-        <div className="min-w-0">
-          <h1 className="text-[22px] md:text-[24px] font-bold tracking-tight text-slate-900">
+        {/* SnapSched Logo on the Left */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-sm"
+            style={{
+              background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+              boxShadow: '0 2px 10px -2px rgba(79, 70, 229, 0.4)',
+            }}
+          >
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="font-bold text-[18px] tracking-tight text-slate-900 leading-tight">
+              SnapSched
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium truncate max-w-[130px]">
+              {schedule.name || 'Academic Timetable'}
+            </p>
+          </div>
+        </div>
+
+        {/* Vertical subtle divider */}
+        <div className="hidden sm:block w-[1px] h-8 bg-slate-200/80 mx-1" />
+
+        {/* Greeting Section */}
+        <div className="hidden sm:block min-w-0">
+          <h1 className="text-[18px] md:text-[20px] font-bold tracking-tight text-slate-900">
             {greeting}
           </h1>
-          <p className="text-[13px] text-slate-500 font-medium truncate mt-0.5">
+          <p className="text-[12px] text-slate-500 font-medium truncate">
             Here's your day at a glance.
           </p>
         </div>
+      </div>
 
       {/* Right: Floating Status Pill + Time Badge + Add Class Action */}
       <div className="flex items-center gap-2.5 flex-wrap md:flex-nowrap shrink-0">
@@ -159,7 +161,7 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-2 h-2 rounded-full shrink-0 ${status.pulse ? 'animate-pulse' : ''}`}
             style={{ backgroundColor: status.dotColor }}
           />
-          <span className="truncate max-w-[200px]">
+          <span className="truncate max-w-[180px]">
             {currentStatus.details}
           </span>
           {status.timeText && (
@@ -174,7 +176,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Live Clock Badge */}
         <div
-          className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
+          className="hidden md:flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
         >
           <Clock className="w-3.5 h-3.5 text-indigo-500" />
           <span className="font-semibold text-slate-800 tabular-nums">{formattedTime}</span>
@@ -194,7 +196,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Add Class</span>
         </button>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
 };
