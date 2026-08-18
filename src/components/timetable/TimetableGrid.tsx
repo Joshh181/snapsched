@@ -265,17 +265,17 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     <div className="space-y-4 select-none">
       {/* ── Category Pill Bar (Floating Card) ── */}
       <div
-        className="p-3 rounded-3xl flex items-center justify-between gap-3 overflow-x-auto"
+        className="p-2.5 sm:p-3 rounded-3xl flex items-center justify-between gap-2 sm:gap-3 overflow-x-auto"
         style={{
           background: 'var(--surface-primary)',
           boxShadow: 'var(--shadow-card)',
           border: '1px solid rgba(255, 255, 255, 0.8)',
         }}
       >
-        <div className="flex items-center gap-2 flex-nowrap min-w-0">
-          <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 flex items-center gap-1.5 text-slate-400 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <span className="text-[11px] font-bold uppercase tracking-wider px-1.5 sm:px-2.5 py-1 flex items-center gap-1.5 text-slate-400 shrink-0">
             <Tag className="w-3.5 h-3.5 text-indigo-500" />
-            Category:
+            <span className="hidden sm:inline">Category:</span>
           </span>
 
           {/* Category Pills */}
@@ -287,19 +287,19 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               <button
                 key={cat.id}
                 onClick={() => handleSelectCat(cat.name)}
-                className="px-3 py-1 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5 shrink-0"
+                className="px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all flex items-center gap-1.5 shrink-0"
                 style={{
                   background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
                   color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
-                  border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
-                  fontWeight: isSelected ? 600 : 500,
+                  border: isSelected ? '1px solid var(--brand-300)' : '1px solid transparent',
+                  fontWeight: isSelected ? 700 : 500,
                 }}
               >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                <span>{cat.name}</span>
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                <span className="whitespace-nowrap">{cat.name}</span>
                 {count > 0 && (
                   <span
-                    className="text-[10px] px-1.5 py-0.2 rounded font-mono"
+                    className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0"
                     style={{
                       background: isSelected ? 'var(--brand-100)' : 'var(--surface-primary)',
                       color: isSelected ? 'var(--brand-700)' : 'var(--text-muted)',
@@ -314,7 +314,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </div>
 
         {/* Category Actions: Clear Category & Add Category */}
-        <div className="shrink-0 pl-1 border-l flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="shrink-0 pl-2 border-l flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
           {filteredClasses.length > 0 && (
             <button
               onClick={() => {

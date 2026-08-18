@@ -145,7 +145,7 @@ export function App() {
           />
 
           {/* Workspace content */}
-          <main className="flex-1 w-full pb-20 lg:pb-6 px-1 md:px-2">
+          <main className="flex-1 w-full pb-28 lg:pb-6 px-1 md:px-2">
             <div className="animate-fade-in">
               {activeTab === 'timetable' && (
                 <TimetableGrid
@@ -221,12 +221,10 @@ export function App() {
 
       {/* Mobile bottom navigation */}
       <nav
-        className="fixed bottom-0 left-0 right-0 lg:hidden flex items-center justify-around px-2 py-1"
+        className="fixed bottom-0 left-0 right-0 lg:hidden flex items-center justify-around px-2 py-1.5 border-t border-slate-200/60 bg-white/95 backdrop-blur-md"
         style={{
-          background: 'var(--surface-primary)',
-          borderTop: '1px solid var(--border-default)',
-          zIndex: 'var(--z-sticky)',
-          boxShadow: '0 -1px 3px rgba(0,0,0,0.06)',
+          zIndex: 'var(--z-bottom-nav)',
+          boxShadow: '0 -2px 12px rgba(15, 23, 42, 0.05)',
         }}
       >
         {mobileNavItems.map((item) => {
@@ -236,19 +234,12 @@ export function App() {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg transition-colors min-w-[56px]"
-              style={{
-                color: isActive ? 'var(--brand-600)' : 'var(--text-muted)',
-              }}
+              className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all min-w-[56px] ${
+                isActive ? 'text-indigo-600 font-bold scale-105' : 'text-slate-500 hover:text-slate-900'
+              }`}
             >
               <Icon className="w-5 h-5" />
-              <span
-                className="text-[10px] font-medium"
-                style={{
-                  color: isActive ? 'var(--brand-600)' : 'var(--text-muted)',
-                  fontWeight: isActive ? 600 : 500,
-                }}
-              >
+              <span className="text-[10px] font-medium tracking-tight">
                 {item.label}
               </span>
             </button>

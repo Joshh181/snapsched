@@ -96,12 +96,13 @@
     --duration-slow: 300ms;
 
     /* ── Z-Index Scale ── */
-    --z-sticky: 10;
-    --z-header: 20;
-    --z-sidebar: 30;
-    --z-overlay: 40;
-    --z-modal: 50;
-    --z-toast: 60;
+    --z-sticky: 20;
+    --z-header: 30;
+    --z-bottom-nav: 40;
+    --z-overlay: 50;
+    --z-sidebar: 60;
+    --z-modal: 70;
+    --z-toast: 80;
   }
 
   /* ── Global Resets ── */
