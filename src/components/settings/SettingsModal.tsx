@@ -8,9 +8,12 @@ import {
   Plus,
   Layers,
   ShieldCheck,
+  Tag,
+  Trash2,
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
-import { ScheduleSet } from '../../types/schedule';
+import { ScheduleSet, CategoryItem } from '../../types/schedule';
+import { COLOR_PALETTES } from '../../data/sampleSchedules';
 
 interface SettingsModalProps {
   schedule: ScheduleSet;
@@ -31,6 +34,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [course, setCourse] = useState(() => schedule.course || 'BS Information Technology');
   const [isSavedProfile, setIsSavedProfile] = useState(false);
 
+  // Category Manager State
+  const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatColor, setNewCatColor] = useState(COLOR_PALETTES[0]);
+
   const [newSetName, setNewSetName] = useState('');
   const [newSemester, setNewSemester] = useState('2nd Semester');
   const [newYear, setNewYear] = useState('2026-2027');
@@ -42,6 +50,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     storageService.saveActiveSchedule(schedule);
     setIsSavedProfile(true);
     setTimeout(() => setIsSavedProfile(false), 2000);
+  };
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    storageService.addCategory(newCatName.trim(), newCatColor);
+    setCategories(storageService.getCategories());
+    setNewCatName('');
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    storageService.deleteCategory(id);
+    setCategories(storageService.getCategories());
   };
 
   const handleCreateNewSet = (e: React.FormEvent) => {
@@ -100,7 +121,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             Settings & Profile
           </h2>
           <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Manage your student profile, academic terms, and private backups.
+            Manage categories, student profile, academic terms, and private backups.
           </p>
         </div>
         <div
@@ -112,8 +133,95 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
       </div>
 
-      {/* Grid: Profile & Backups */}
+      {/* Grid: Categories & Profile */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Category Manager */}
+        <div
+          className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
+          style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+        >
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="w-4 h-4" style={{ color: 'var(--brand-600)' }} />
+              <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
+                Schedule Categories ({categories.length})
+              </h3>
+            </div>
+            <p className="text-[12px] mb-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Organize classes, gym, work, and personal schedules into dedicated layers.
+            </p>
+
+            {/* Existing Categories List */}
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5 mb-3">
+              {categories.map((cat) => (
+                <div
+                  key={cat.id}
+                  className="p-2 rounded-lg text-[12px] font-medium flex items-center justify-between"
+                  style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                    <span style={{ color: 'var(--text-primary)' }}>{cat.name}</span>
+                    {cat.isDefault && (
+                      <span className="text-[10px] text-slate-400 font-normal">(Default)</span>
+                    )}
+                  </div>
+                  {!cat.isDefault && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(cat.id)}
+                      className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors"
+                      title="Delete category"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Add New Category Form */}
+          <form onSubmit={handleAddCategory} className="pt-2 border-t space-y-2" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="New category name (e.g. Side Hustle)"
+                className={inputClasses}
+                style={inputStyle}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg text-white font-medium text-[12px] transition-colors shrink-0"
+                style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
+              >
+                Add
+              </button>
+            </div>
+            {/* Color picker */}
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[11px] text-slate-500">Color:</span>
+              <div className="flex items-center gap-1.5">
+                {COLOR_PALETTES.slice(0, 6).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setNewCatColor(c)}
+                    className="w-5 h-5 rounded-full transition-transform"
+                    style={{
+                      backgroundColor: c,
+                      transform: newCatColor === c ? 'scale(1.2)' : 'scale(1)',
+                      boxShadow: newCatColor === c ? '0 0 0 2px white, 0 0 0 3px ' + c : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </form>
+        </div>
+
         {/* Student Profile */}
         <div
           className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
@@ -164,7 +272,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </form>
           </div>
         </div>
+      </div>
 
+      {/* Grid: Create New Set & Manage Sets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Backup & Restore */}
         <div
           className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
@@ -200,10 +311,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </label>
           </div>
         </div>
-      </div>
 
-      {/* Grid: Create New Set & Manage Sets */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Create New Semester Set */}
         <div
           className="p-4 rounded-lg space-y-3"
@@ -249,51 +357,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </form>
         </div>
+      </div>
 
-        {/* Manage Existing Sets */}
-        <div
-          className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
-          style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
-        >
-          <div className="space-y-2">
-            <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
-              Active Sets ({allSets.length})
-            </h3>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
-              {allSets.map((s) => (
-                <div
-                  key={s.id}
-                  onClick={() => onSelectSet(s.id)}
-                  className="p-2.5 rounded-lg text-[13px] cursor-pointer flex items-center justify-between transition-colors"
-                  style={{
-                    background: s.id === schedule.id ? 'var(--brand-50)' : 'var(--surface-secondary)',
-                    border: s.id === schedule.id ? '1px solid var(--brand-200)' : '1px solid var(--border-subtle)',
-                    color: s.id === schedule.id ? 'var(--brand-800)' : 'var(--text-primary)',
-                    fontWeight: s.id === schedule.id ? 600 : 400,
-                  }}
-                >
-                  <span className="truncate">{s.name}</span>
-                  <span className="text-[12px] shrink-0" style={{ color: 'var(--text-muted)' }}>{s.items.length} classes</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Active Semester Sets & Sample Reset */}
+      <div
+        className="p-4 rounded-lg space-y-3"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
+            Active Sets ({allSets.length})
+          </h3>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Reset your schedule to the default sample dataset?')) {
+                onResetToSample();
+              }
+            }}
+            className="text-[12px] font-medium flex items-center gap-1 text-red-600 hover:underline cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset to Sample Schedule
+          </button>
+        </div>
 
-          <div className="pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Reset your schedule to the default sample dataset?')) {
-                  onResetToSample();
-                }
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-0.5">
+          {allSets.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => onSelectSet(s.id)}
+              className="p-2.5 rounded-lg text-[13px] cursor-pointer flex items-center justify-between transition-colors"
+              style={{
+                background: s.id === schedule.id ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                border: s.id === schedule.id ? '1px solid var(--brand-200)' : '1px solid var(--border-subtle)',
+                color: s.id === schedule.id ? 'var(--brand-800)' : 'var(--text-primary)',
+                fontWeight: s.id === schedule.id ? 600 : 400,
               }}
-              className="w-full py-2 rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 hover:bg-red-50"
-              style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-default)', background: 'var(--surface-primary)' }}
             >
-              <RotateCcw className="w-4 h-4" />
-              Reset to Sample Schedule
-            </button>
-          </div>
+              <span className="truncate">{s.name}</span>
+              <span className="text-[12px] shrink-0" style={{ color: 'var(--text-muted)' }}>{s.items.length} classes</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

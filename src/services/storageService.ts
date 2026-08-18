@@ -1,4 +1,4 @@
-import { ScheduleSet, FriendSchedule } from '../types/schedule';
+import { ScheduleSet, FriendSchedule, CategoryItem, DEFAULT_CATEGORIES } from '../types/schedule';
 import { INITIAL_SCHEDULE_SET, SAMPLE_FRIEND_SCHEDULES } from '../data/sampleSchedules';
 
 const STORAGE_KEYS = {
@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   ALL_SETS: 'snapsched_all_sets',
   GEMINI_API_KEY: 'snapsched_gemini_api_key',
   FRIENDS: 'snapsched_friends',
+  CATEGORIES: 'snapsched_categories',
   THEME_MODE: 'snapsched_theme_mode',
   USER_PROFILE: 'snapsched_user_profile',
 };
@@ -59,6 +60,46 @@ export const storageService = {
     }
   },
 
+  // Categories
+  getCategories(): CategoryItem[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to read categories from localStorage', e);
+    }
+    return DEFAULT_CATEGORIES;
+  },
+
+  saveCategories(categories: CategoryItem[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+    } catch (e) {
+      console.error('Failed to save categories', e);
+    }
+  },
+
+  addCategory(name: string, color: string): CategoryItem {
+    const categories = this.getCategories();
+    const newCat: CategoryItem = {
+      id: `cat-${Date.now()}`,
+      name: name.trim(),
+      color,
+    };
+    const updated = [...categories, newCat];
+    this.saveCategories(updated);
+    return newCat;
+  },
+
+  deleteCategory(id: string): void {
+    const categories = this.getCategories();
+    const updated = categories.filter((c) => c.id !== id);
+    this.saveCategories(updated.length > 0 ? updated : DEFAULT_CATEGORIES);
+  },
+
   // Gemini API Key
   getGeminiApiKey(): string {
     return localStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY) || '';
@@ -91,6 +132,7 @@ export const storageService = {
   resetToSample(): ScheduleSet {
     this.saveActiveSchedule(INITIAL_SCHEDULE_SET);
     this.saveFriends(SAMPLE_FRIEND_SCHEDULES);
+    this.saveCategories(DEFAULT_CATEGORIES);
     return INITIAL_SCHEDULE_SET;
   }
 };

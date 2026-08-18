@@ -15,18 +15,34 @@ export const DAYS_OF_WEEK: DayInfo[] = [
   { key: 'S', full: 'Saturday', short: 'Sat' },
 ];
 
+export interface CategoryItem {
+  id: string;
+  name: string;
+  color: string;
+  isDefault?: boolean;
+}
+
+export const DEFAULT_CATEGORIES: CategoryItem[] = [
+  { id: 'cat-school', name: 'School', color: '#4f46e5', isDefault: true },
+  { id: 'cat-work', name: 'Work', color: '#2563eb', isDefault: true },
+  { id: 'cat-gym', name: 'Gym', color: '#059669', isDefault: true },
+  { id: 'cat-study', name: 'Study', color: '#d97706', isDefault: true },
+  { id: 'cat-personal', name: 'Personal', color: '#7c3aed', isDefault: true },
+];
+
 export interface ClassItem {
   id: string;
-  code: string;               // e.g., "IT 311"
+  code: string;               // e.g., "IT 311" or "WORK SHIFT" or "GYM LEG DAY"
   name: string;               // e.g., "Web Systems & Technologies 2"
+  category?: string;          // e.g., "School", "Gym", "Work", "Study", "Personal"
   section?: string;           // e.g., "BSIT 3-A"
   instructor?: string;        // e.g., "Prof. R. Santos"
   room: string;               // e.g., "CL 304" / "IT-LAB 2"
   days: DayAbbreviation[];    // e.g., ["M", "W", "F"] or ["T", "TH"]
   startTime: string;          // "07:30" (24h format HH:mm)
   endTime: string;            // "09:00" (24h format HH:mm)
-  color: string;              // HEX / Tailwind color class
-  units: number;              // e.g., 3
+  color: string;              // HEX color
+  units?: number;             // e.g., 3
   notes?: string;
   scheduleId?: string;
 }
@@ -63,6 +79,7 @@ export interface OcrParsedClass {
   id: string;
   code: string;
   name: string;
+  category?: string;
   section: string;
   units: number;
   days: DayAbbreviation[];

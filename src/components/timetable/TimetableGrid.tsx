@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   ListFilter,
@@ -7,11 +7,16 @@ import {
   ChevronRight,
   Columns3,
   CalendarDays,
+  Plus,
+  X,
+  Tag,
 } from 'lucide-react';
-import { ClassItem, VacantPeriod, DAYS_OF_WEEK, DayAbbreviation } from '../../types/schedule';
+import { ClassItem, VacantPeriod, DAYS_OF_WEEK, DayAbbreviation, CategoryItem } from '../../types/schedule';
 import { ClassCard } from './ClassCard';
 import { VacantCard } from './VacantCard';
 import { timeToMinutes, format12Hour } from '../../hooks/useVacantPeriods';
+import { storageService } from '../../services/storageService';
+import { COLOR_PALETTES } from '../../data/sampleSchedules';
 
 interface TimetableGridProps {
   classes: ClassItem[];
@@ -32,11 +37,6 @@ interface PositionedClass {
   widthPercent: number;
 }
 
-/**
- * Intelligent Calendar Overlap / Collision Detection Algorithm:
- * Splits concurrent/overlapping classes into side-by-side sub-columns (like Google / Apple Calendar)
- * instead of stacking them on top of each other.
- */
 function calculateClassLayout(
   dayClasses: ClassItem[],
   startHour: number,
@@ -44,7 +44,6 @@ function calculateClassLayout(
 ): PositionedClass[] {
   if (dayClasses.length === 0) return [];
 
-  // 1. Sort by start time, then by duration descending
   const sorted = [...dayClasses].sort((a, b) => {
     const startA = timeToMinutes(a.startTime);
     const startB = timeToMinutes(b.startTime);
@@ -54,7 +53,6 @@ function calculateClassLayout(
     return durB - durA;
   });
 
-  // 2. Identify overlapping clusters
   const clusters: ClassItem[][] = [];
   let currentCluster: ClassItem[] = [];
   let clusterEnd = -1;
@@ -76,7 +74,6 @@ function calculateClassLayout(
     clusters.push(currentCluster);
   }
 
-  // 3. For each cluster, allocate side-by-side columns
   const results: PositionedClass[] = [];
 
   for (const cluster of clusters) {
@@ -136,7 +133,14 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'agenda'>('grid');
   const [selectedDayFilter, setSelectedDayFilter] = useState<DayAbbreviation | 'ALL'>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   
+  // Categories state
+  const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatColor, setNewCatColor] = useState(COLOR_PALETTES[0]);
+
   // Mobile layout sub-mode: 'single-day' or 'full-week-scroll'
   const [mobileLayout, setMobileLayout] = useState<'single-day' | 'week-scroll'>('single-day');
 
@@ -160,13 +164,10 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     const deltaX = e.changedTouches[0].clientX - touchStartX.current;
     const deltaY = e.changedTouches[0].clientY - touchStartY.current;
 
-    // Only register horizontal swipe if movement is predominantly horizontal and >= 45px
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 45) {
       if (deltaX < 0) {
-        // Swipe Left -> Next day
         setMobileDayIndex((prev) => Math.min(DAYS_OF_WEEK.length - 1, prev + 1));
       } else {
-        // Swipe Right -> Previous day
         setMobileDayIndex((prev) => Math.max(0, prev - 1));
       }
     }
@@ -174,15 +175,34 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     touchStartY.current = null;
   };
 
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    const created = storageService.addCategory(newCatName.trim(), newCatColor);
+    setCategories(storageService.getCategories());
+    setSelectedCategory(created.name);
+    setNewCatName('');
+    setIsAddingCategory(false);
+  };
+
+  // Filter classes by active category
+  const filteredClasses = useMemo(() => {
+    if (selectedCategory === 'ALL') return classes;
+    return classes.filter((c) => {
+      const itemCat = c.category || 'School';
+      return itemCat.toLowerCase() === selectedCategory.toLowerCase();
+    });
+  }, [classes, selectedCategory]);
+
   const hourHeight = 44;
 
   const { startHour, endHour } = useMemo(() => {
-    if (classes.length === 0) return { startHour: 7, endHour: 18 };
+    if (filteredClasses.length === 0) return { startHour: 7, endHour: 18 };
 
     let earliest = 7;
     let latest = 18;
 
-    classes.forEach((c) => {
+    filteredClasses.forEach((c) => {
       const sMin = timeToMinutes(c.startTime);
       const eMin = timeToMinutes(c.endTime);
       const sH = Math.floor(sMin / 60);
@@ -193,7 +213,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     });
 
     return { startHour: earliest, endHour: Math.max(latest, earliest + 9) };
-  }, [classes]);
+  }, [filteredClasses]);
 
   const hours = useMemo(() => {
     return Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
@@ -211,6 +231,107 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
   return (
     <div className="space-y-3 select-none">
+      {/* ── Category Pill Bar ── */}
+      <div
+        className="p-2 rounded-lg flex items-center justify-between gap-2 overflow-x-auto"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
+        <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
+          <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-1 flex items-center gap-1 text-slate-400 shrink-0">
+            <Tag className="w-3 h-3 text-slate-400" />
+            Category
+          </span>
+
+          {/* All Categories Button */}
+          <button
+            onClick={() => setSelectedCategory('ALL')}
+            className="px-3 py-1 rounded-md text-[12px] font-medium transition-all shrink-0"
+            style={{
+              background: selectedCategory === 'ALL' ? 'var(--text-primary)' : 'var(--surface-secondary)',
+              color: selectedCategory === 'ALL' ? 'white' : 'var(--text-secondary)',
+              border: selectedCategory === 'ALL' ? '1px solid var(--text-primary)' : '1px solid var(--border-subtle)',
+              fontWeight: selectedCategory === 'ALL' ? 600 : 500,
+            }}
+          >
+            All Categories ({classes.length})
+          </button>
+
+          {/* Category Pills */}
+          {categories.map((cat) => {
+            const isSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+            const count = classes.filter((c) => (c.category || 'School').toLowerCase() === cat.name.toLowerCase()).length;
+
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.name)}
+                className="px-3 py-1 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5 shrink-0"
+                style={{
+                  background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                  color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
+                  border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                  fontWeight: isSelected ? 600 : 500,
+                }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                <span>{cat.name}</span>
+                {count > 0 && (
+                  <span
+                    className="text-[10px] px-1.5 py-0.2 rounded font-mono"
+                    style={{
+                      background: isSelected ? 'var(--brand-100)' : 'var(--surface-primary)',
+                      color: isSelected ? 'var(--brand-700)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Add Category Button */}
+        <div className="shrink-0 pl-1 border-l" style={{ borderColor: 'var(--border-subtle)' }}>
+          {isAddingCategory ? (
+            <form onSubmit={handleCreateCategory} className="flex items-center gap-1">
+              <input
+                type="text"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="Category name..."
+                autoFocus
+                className="px-2 py-1 text-[11px] rounded border focus:outline-none w-28"
+                style={{ background: 'var(--surface-secondary)', borderColor: 'var(--brand-400)', color: 'var(--text-primary)' }}
+              />
+              <button
+                type="submit"
+                className="p-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-[11px]"
+                title="Save Category"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddingCategory(false)}
+                className="p-1 rounded text-slate-400 hover:bg-gray-100"
+                title="Cancel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setIsAddingCategory(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Control Bar */}
       <div
         className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2 rounded-lg"
@@ -342,7 +463,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               {DAYS_OF_WEEK.map((d, idx) => {
                 const isToday = d.key === todayAbbr;
                 const isCurrent = idx === mobileDayIndex;
-                const dayClassCount = classes.filter(c => c.days.includes(d.key)).length;
+                const dayClassCount = filteredClasses.filter(c => c.days.includes(d.key)).length;
 
                 return (
                   <button
@@ -402,7 +523,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
                   {DAYS_OF_WEEK.map((d) => {
                     const isToday = d.key === todayAbbr;
-                    const dayClasses = classes.filter((c) => c.days.includes(d.key));
+                    const dayClasses = filteredClasses.filter((c) => c.days.includes(d.key));
                     return (
                       <div
                         key={d.key}
@@ -461,7 +582,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   {/* Day columns */}
                   {DAYS_OF_WEEK.map((d) => {
                     const isToday = d.key === todayAbbr;
-                    const dayClasses = classes.filter((c) => c.days.includes(d.key));
+                    const dayClasses = filteredClasses.filter((c) => c.days.includes(d.key));
                     const dayVacant = vacantPeriods.filter((v) => v.day === d.key);
                     const positionedClasses = calculateClassLayout(dayClasses, startHour, hourHeight);
 
@@ -495,8 +616,8 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                           />
                         ))}
 
-                        {/* Vacant periods */}
-                        {dayVacant.map((vacant) => {
+                        {/* Vacant periods (only shown when in ALL category view to maintain true schedule gaps) */}
+                        {selectedCategory === 'ALL' && dayVacant.map((vacant) => {
                           const startMin = timeToMinutes(vacant.startTime);
                           const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
                           const h = (vacant.durationMinutes / 60) * hourHeight;
@@ -554,7 +675,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-                      {classes.filter(c => c.days.includes(mobileDay.key)).length} classes
+                      {filteredClasses.filter(c => c.days.includes(mobileDay.key)).length} items
                     </span>
                     <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-primary)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
                       Swipe ⇄
@@ -595,7 +716,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   ))}
 
                   {calculateClassLayout(
-                    classes.filter(c => c.days.includes(mobileDay.key)),
+                    filteredClasses.filter(c => c.days.includes(mobileDay.key)),
                     startHour,
                     hourHeight
                   ).map((pos) => (
@@ -611,7 +732,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                     />
                   ))}
 
-                  {vacantPeriods.filter(v => v.day === mobileDay.key).map((vacant) => {
+                  {selectedCategory === 'ALL' && vacantPeriods.filter(v => v.day === mobileDay.key).map((vacant) => {
                     const startMin = timeToMinutes(vacant.startTime);
                     const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
                     const h = (vacant.durationMinutes / 60) * hourHeight;
@@ -647,7 +768,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         <div className="space-y-3">
           {activeDays.map((d) => {
             const isToday = d.key === todayAbbr;
-            const dayClasses = classes
+            const dayClasses = filteredClasses
               .filter((c) => c.days.includes(d.key))
               .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
             const dayVacant = vacantPeriods.filter((v) => v.day === d.key);
@@ -678,14 +799,14 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                     )}
                   </div>
                   <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-                    {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'} · {dayVacant.length} {dayVacant.length === 1 ? 'break' : 'breaks'}
+                    {dayClasses.length} {dayClasses.length === 1 ? 'item' : 'items'}
                   </span>
                 </div>
 
                 {/* Day items */}
                 {dayClasses.length === 0 ? (
                   <div className="py-6 text-center text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
-                    No classes scheduled for {d.full}
+                    No items scheduled for {d.full} in {selectedCategory === 'ALL' ? 'any category' : selectedCategory}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -717,6 +838,14 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                                   <span className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>
                                     {item.code}
                                   </span>
+                                  {item.category && (
+                                    <span
+                                      className="text-[10px] px-1.5 py-0.2 rounded font-medium"
+                                      style={{ background: 'var(--surface-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                                    >
+                                      {item.category}
+                                    </span>
+                                  )}
                                   {item.room && (
                                     <span
                                       className="text-[11px] px-1.5 py-0.5 rounded-md"
@@ -750,8 +879,8 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                             </div>
                           </div>
 
-                          {/* Break after */}
-                          {breakAfter && (
+                          {/* Break after (only shown in ALL category view) */}
+                          {selectedCategory === 'ALL' && breakAfter && (
                             <div
                               onClick={() => onSelectVacant?.(breakAfter)}
                               className="p-2.5 rounded-lg flex items-center justify-between cursor-pointer transition-colors text-[13px]"
@@ -764,7 +893,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                             >
                               <div className="flex items-center gap-2">
                                 <span style={{ color: '#92400e' }} className="font-medium">
-                                  ☕ {breakAfter.durationFormatted} free
+                                  {breakAfter.durationFormatted} free
                                 </span>
                                 <span className="text-[12px]" style={{ color: '#b45309' }}>
                                   {format12Hour(breakAfter.startTime)} – {format12Hour(breakAfter.endTime)}

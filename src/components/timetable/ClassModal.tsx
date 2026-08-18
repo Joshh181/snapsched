@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, User, Check } from 'lucide-react';
-import { ClassItem, DayAbbreviation, DAYS_OF_WEEK } from '../../types/schedule';
+import { X, MapPin, User, Check, Tag } from 'lucide-react';
+import { ClassItem, DayAbbreviation, DAYS_OF_WEEK, CategoryItem } from '../../types/schedule';
 import { COLOR_PALETTES } from '../../data/sampleSchedules';
+import { storageService } from '../../services/storageService';
 
 interface ClassModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export const ClassModal: React.FC<ClassModalProps> = ({
   onUpdate,
   initialData,
 }) => {
+  const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
+  const [category, setCategory] = useState('School');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [section, setSection] = useState('');
@@ -32,9 +35,14 @@ export const ClassModal: React.FC<ClassModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    setCategories(storageService.getCategories());
+  }, [isOpen]);
+
+  useEffect(() => {
     if (initialData) {
       setCode(initialData.code);
       setName(initialData.name);
+      setCategory(initialData.category || 'School');
       setSection(initialData.section || '');
       setInstructor(initialData.instructor || '');
       setRoom(initialData.room);
@@ -42,18 +50,19 @@ export const ClassModal: React.FC<ClassModalProps> = ({
       setStartTime(initialData.startTime);
       setEndTime(initialData.endTime);
       setColor(initialData.color);
-      setUnits(initialData.units);
+      setUnits(initialData.units || 3);
       setNotes(initialData.notes || '');
     } else {
       setCode('');
       setName('');
+      setCategory('School');
       setSection('BSIT 3-A');
       setInstructor('');
       setRoom('');
       setDays(['M', 'W']);
       setStartTime('08:00');
       setEndTime('09:30');
-      setColor(COLOR_PALETTES[Math.floor(Math.random() * COLOR_PALETTES.length)]);
+      setColor(COLOR_PALETTES[0]);
       setUnits(3);
       setNotes('');
     }
@@ -72,11 +81,19 @@ export const ClassModal: React.FC<ClassModalProps> = ({
     }
   };
 
+  const handleCategoryChange = (selectedCatName: string) => {
+    setCategory(selectedCatName);
+    const matchedCat = categories.find((c) => c.name.toLowerCase() === selectedCatName.toLowerCase());
+    if (matchedCat) {
+      setColor(matchedCat.color);
+    }
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!code.trim()) newErrors.code = 'Subject code is required';
-    if (!name.trim()) newErrors.name = 'Subject name is required';
-    if (!room.trim()) newErrors.room = 'Room is required';
+    if (!code.trim()) newErrors.code = 'Title / Code is required';
+    if (!name.trim()) newErrors.name = 'Description / Name is required';
+    if (!room.trim()) newErrors.room = 'Location / Room is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -88,6 +105,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
     const payload = {
       code: code.trim(),
       name: name.trim(),
+      category: category.trim(),
       section: section.trim(),
       instructor: instructor.trim(),
       room: room.trim(),
@@ -144,7 +162,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
               style={{ backgroundColor: color, boxShadow: 'var(--shadow-xs)' }}
             />
             <h3 className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>
-              {initialData ? 'Edit Class' : 'Add New Class'}
+              {initialData ? 'Edit Schedule Item' : 'Add New Schedule Item'}
             </h3>
           </div>
           <button
@@ -159,17 +177,47 @@ export const ClassModal: React.FC<ClassModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
-          {/* Subject Code + Units */}
+          {/* Category Selector Bar */}
+          <div>
+            <label className="block text-[12px] font-medium mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+              <Tag className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+              Category
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {categories.map((cat) => {
+                const isSelected = category.toLowerCase() === cat.name.toLowerCase();
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => handleCategoryChange(cat.name)}
+                    className="px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5 transition-all"
+                    style={{
+                      background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                      color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
+                      border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                      fontWeight: isSelected ? 600 : 500,
+                    }}
+                  >
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Title / Code + Units */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Subject Code <span style={{ color: 'var(--status-error)' }}>*</span>
+                Code / Title <span style={{ color: 'var(--status-error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. CS 301"
+                placeholder="e.g. IT 311 or GYM LEGS"
                 className={inputClasses}
                 style={{
                   ...inputStyle,
@@ -184,11 +232,11 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             </div>
             <div>
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Units
+                Units / Load
               </label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 max="9"
                 value={units}
                 onChange={(e) => setUnits(Number(e.target.value))}
@@ -200,16 +248,16 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             </div>
           </div>
 
-          {/* Subject Name */}
+          {/* Subject / Activity Name */}
           <div>
             <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-              Subject Name <span style={{ color: 'var(--status-error)' }}>*</span>
+              Description / Subject Name <span style={{ color: 'var(--status-error)' }}>*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Distributed Systems & Cloud Architecture"
+              placeholder="e.g. Distributed Systems or Workout Routine"
               className={inputClasses}
               style={{
                 ...inputStyle,
@@ -227,7 +275,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Room / Lab <span style={{ color: 'var(--status-error)' }}>*</span>
+                Location / Room <span style={{ color: 'var(--status-error)' }}>*</span>
               </label>
               <div className="relative">
                 <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
@@ -235,7 +283,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                   type="text"
                   value={room}
                   onChange={(e) => setRoom(e.target.value)}
-                  placeholder="e.g. LAB-304"
+                  placeholder="e.g. LAB-304 / Fitness Center"
                   className={inputClasses}
                   style={{
                     ...inputStyle,
@@ -252,7 +300,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             </div>
             <div>
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Instructor
+                Instructor / Trainer
               </label>
               <div className="relative">
                 <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
@@ -270,10 +318,10 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             </div>
           </div>
 
-          {/* Class Days */}
+          {/* Schedule Days */}
           <div>
             <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-              Class Days
+              Scheduled Days
             </label>
             <div className="grid grid-cols-6 gap-1.5">
               {DAYS_OF_WEEK.map((d) => {
@@ -369,7 +417,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Lab manual required, midterm in week 8"
+              placeholder="e.g. Bring gym gear, lab manual required, etc."
               className={inputClasses}
               style={inputStyle}
               onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
@@ -392,7 +440,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
               className="px-5 py-2 rounded-lg text-[13px] font-medium text-white transition-colors hover:opacity-90"
               style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
             >
-              {initialData ? 'Save Changes' : 'Add Class'}
+              {initialData ? 'Save Changes' : 'Add Item'}
             </button>
           </div>
         </form>
