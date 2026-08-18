@@ -133,10 +133,13 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'agenda'>('grid');
   const [selectedDayFilter, setSelectedDayFilter] = useState<DayAbbreviation | 'ALL'>('ALL');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   
   // Categories state
   const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    const stored = storageService.getCategories();
+    return stored[0]?.name || 'School';
+  });
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState(COLOR_PALETTES[0]);
@@ -239,22 +242,8 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
           <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-1 flex items-center gap-1 text-slate-400 shrink-0">
             <Tag className="w-3 h-3 text-slate-400" />
-            Category
+            Category:
           </span>
-
-          {/* All Categories Button */}
-          <button
-            onClick={() => setSelectedCategory('ALL')}
-            className="px-3 py-1 rounded-md text-[12px] font-medium transition-all shrink-0"
-            style={{
-              background: selectedCategory === 'ALL' ? 'var(--text-primary)' : 'var(--surface-secondary)',
-              color: selectedCategory === 'ALL' ? 'white' : 'var(--text-secondary)',
-              border: selectedCategory === 'ALL' ? '1px solid var(--text-primary)' : '1px solid var(--border-subtle)',
-              fontWeight: selectedCategory === 'ALL' ? 600 : 500,
-            }}
-          >
-            All Categories ({classes.length})
-          </button>
 
           {/* Category Pills */}
           {categories.map((cat) => {
@@ -616,8 +605,8 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                           />
                         ))}
 
-                        {/* Vacant periods (only shown when in ALL category view to maintain true schedule gaps) */}
-                        {selectedCategory === 'ALL' && dayVacant.map((vacant) => {
+                        {/* Vacant periods */}
+                        {dayVacant.map((vacant) => {
                           const startMin = timeToMinutes(vacant.startTime);
                           const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
                           const h = (vacant.durationMinutes / 60) * hourHeight;
@@ -732,7 +721,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                     />
                   ))}
 
-                  {selectedCategory === 'ALL' && vacantPeriods.filter(v => v.day === mobileDay.key).map((vacant) => {
+                  {vacantPeriods.filter(v => v.day === mobileDay.key).map((vacant) => {
                     const startMin = timeToMinutes(vacant.startTime);
                     const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
                     const h = (vacant.durationMinutes / 60) * hourHeight;
