@@ -169,8 +169,9 @@ export function App() {
 
               {activeTab === 'scanner' && (
                 <ScheduleScanner
+                  activeCategory={selectedCategory}
                   onImportClasses={(imported, replace) => {
-                    const targetCat = imported[0]?.category || selectedCategory || 'School';
+                    const targetCat = imported.find((i) => i.category)?.category || imported[0]?.category || selectedCategory || 'School';
                     importOcrClasses(imported, replace);
                     setSelectedCategory(targetCat);
                     setActiveTab('timetable');

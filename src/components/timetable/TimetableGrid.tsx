@@ -198,6 +198,16 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     touchStartY.current = null;
   };
 
+  useEffect(() => {
+    if (propCategory) {
+      setInternalCategory(propCategory);
+    }
+  }, [propCategory]);
+
+  useEffect(() => {
+    setCategories(storageService.getCategories());
+  }, [classes]);
+
   const handleCreateCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;

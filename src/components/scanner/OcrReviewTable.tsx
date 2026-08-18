@@ -6,6 +6,7 @@ import { storageService } from '../../services/storageService';
 
 interface OcrReviewTableProps {
   items: OcrParsedClass[];
+  activeCategory?: string;
   onToggleSelect: (id: string) => void;
   onSelectAll: (select: boolean) => void;
   onDeleteItem: (id: string) => void;
@@ -16,6 +17,7 @@ interface OcrReviewTableProps {
 
 export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
   items,
+  activeCategory,
   onToggleSelect,
   onSelectAll,
   onDeleteItem,
@@ -25,7 +27,7 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
 }) => {
   const [categories] = useState<CategoryItem[]>(() => storageService.getCategories());
   const [selectedTargetCategory, setSelectedTargetCategory] = useState<string>(() => {
-    return items[0]?.category || categories[0]?.name || 'School';
+    return items.find((i) => i.category)?.category || activeCategory || categories[0]?.name || 'School';
   });
 
   const selectedCount = items.filter((i) => i.selected).length;
@@ -41,6 +43,16 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
     items.forEach((item) => {
       onUpdateItem(item.id, { category: categoryName });
     });
+  };
+
+  const handleExecuteImport = () => {
+    // Statically ensure all items have the chosen category before triggering import
+    items.forEach((item) => {
+      if (!item.category) {
+        onUpdateItem(item.id, { category: selectedTargetCategory });
+      }
+    });
+    onConfirmImport(false);
   };
 
   return (
@@ -76,7 +88,7 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
             Scan Another
           </button>
           <button
-            onClick={() => onConfirmImport(false)}
+            onClick={handleExecuteImport}
             disabled={selectedCount === 0}
             className="px-4 py-2 rounded-lg font-medium text-[13px] text-white transition-colors flex items-center gap-1.5 disabled:opacity-40"
             style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}

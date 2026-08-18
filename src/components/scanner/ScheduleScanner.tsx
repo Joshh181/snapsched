@@ -13,10 +13,12 @@ import { OcrReviewTable } from './OcrReviewTable';
 interface ScheduleScannerProps {
   onImportClasses: (classes: OcrParsedClass[], replace: boolean) => void;
   onOpenSettings?: () => void;
+  activeCategory?: string;
 }
 
 export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
   onImportClasses,
+  activeCategory = 'School',
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -40,7 +42,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
         });
       }, 400);
     } else {
-      setProgress(100);
+      clearInterval(interval);
     }
     return () => clearInterval(interval);
   }, [isProcessing]);
@@ -85,9 +87,13 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
 
   const finishProcessing = (results: OcrParsedClass[]) => {
     setProgress(100);
+    const tagged = results.map((r) => ({
+      ...r,
+      category: r.category || activeCategory || 'School',
+    }));
     setTimeout(() => {
       setIsProcessing(false);
-      setParsedResults(results);
+      setParsedResults(tagged);
     }, 450);
   };
 
@@ -109,7 +115,12 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
   };
   const handleConfirmImport = (replace: boolean) => {
     if (!parsedResults) return;
-    const selected = parsedResults.filter((i) => i.selected);
+    const selected = parsedResults
+      .filter((i) => i.selected)
+      .map((i) => ({
+        ...i,
+        category: i.category || activeCategory || 'School',
+      }));
     if (selected.length === 0) return;
     onImportClasses(selected, replace);
     setParsedResults(null);
@@ -144,6 +155,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
         /* ── STEP 2: REVIEW & EDIT EXTRACTED CLASSES ── */
         <OcrReviewTable
           items={parsedResults}
+          activeCategory={activeCategory}
           onToggleSelect={handleToggleSelect}
           onSelectAll={handleSelectAll}
           onDeleteItem={handleDeleteItem}
