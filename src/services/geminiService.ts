@@ -1,12 +1,11 @@
 import { OcrParsedClass, DayAbbreviation } from '../types/schedule';
 import { storageService } from './storageService';
 
-// Candidate models in order of priority
+// Active Google Gemini models verified for the API endpoint
 const CANDIDATE_MODELS = [
   'gemini-2.5-flash',
-  'gemini-1.5-flash',
-  'gemini-2.0-flash-exp',
-  'gemini-1.5-pro',
+  'gemini-2.5-pro',
+  'gemini-flash-latest',
 ];
 
 const OCR_SYSTEM_PROMPT = `You are an expert academic schedule and Certificate of Registration (COR) parser.
@@ -35,6 +34,32 @@ RULES FOR TIME & DAYS:
 - If times are written as "7:30AM-9:00AM", convert to "07:30" and "09:00".
 - If times are written as "1:30PM-3:00PM", convert to "13:30" and "15:00".
 `;
+
+function extractJsonArray(rawText: string): any[] {
+  if (!rawText || !rawText.trim()) return [];
+  const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+  // Try direct parse
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') {
+      const arrayKey = Object.keys(parsed).find((k) => Array.isArray(parsed[k]));
+      if (arrayKey) return parsed[arrayKey];
+    }
+  } catch (e) {}
+
+  // Try regex match for array brackets
+  const match = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[0]);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+
+  return [];
+}
 
 export const geminiService = {
   /**
@@ -78,7 +103,7 @@ export const geminiService = {
     }
 
     const promptText = `${OCR_SYSTEM_PROMPT}\n\nInput Document / Instructions:\n${
-      input.text || 'Extract all class schedule items from this image accurately.'
+      input.text || 'Extract all class schedule items from this image accurately into the JSON array structure.'
     }`;
     payload.contents[0].parts.push({ text: promptText });
 
@@ -100,7 +125,6 @@ export const geminiService = {
           const errData = await response.json().catch(() => ({}));
           const msg = errData?.error?.message || `Status ${response.status}`;
           lastError = `${modelName}: ${msg}`;
-          // If model is not available, continue to next candidate model
           if (response.status === 404 || msg.includes('not found') || msg.includes('no longer available')) {
             continue;
           }
@@ -114,16 +138,12 @@ export const geminiService = {
           continue;
         }
 
-        // Clean JSON formatting
-        const cleanedJson = rawContent
-          .replace(/```json/gi, '')
-          .replace(/```/g, '')
-          .trim();
-
-        const parsedItems = JSON.parse(cleanedJson);
-        const formatted = this.formatParsedClasses(parsedItems);
-        if (formatted.length > 0) {
-          return formatted;
+        const parsedItems = extractJsonArray(rawContent);
+        if (parsedItems.length > 0) {
+          const formatted = this.formatParsedClasses(parsedItems);
+          if (formatted.length > 0) {
+            return formatted;
+          }
         }
       } catch (err: any) {
         lastError = err.message || String(err);
@@ -133,7 +153,12 @@ export const geminiService = {
       }
     }
 
-    throw new Error(`Gemini Vision Error: ${lastError || 'Could not parse document with Gemini models.'}`);
+    // If Gemini failed on image, and raw text is available, fallback to text parser
+    if (input.text) {
+      return this.fallbackHeuristicParser(input.text);
+    }
+
+    throw new Error(`Gemini Vision Error: ${lastError || 'Could not parse document. Please check the image resolution and try again.'}`);
   },
 
   /**
@@ -143,7 +168,6 @@ export const geminiService = {
     if (!Array.isArray(rawItems)) return [];
 
     return rawItems.map((item, idx) => {
-      // Normalize days
       let days: DayAbbreviation[] = [];
       if (Array.isArray(item.days)) {
         days = item.days.map((d: string) => d.toUpperCase().trim() as DayAbbreviation);
@@ -202,13 +226,11 @@ export const geminiService = {
     if (!timeStr) return '08:00';
     const clean = timeStr.trim().toUpperCase();
 
-    // Already 24h format like 07:30 or 14:00
     if (/^\d{1,2}:\d{2}$/.test(clean)) {
       const [h, m] = clean.split(':');
       return `${h.padStart(2, '0')}:${m}`;
     }
 
-    // 12-hour format with AM/PM like 7:30AM or 01:30 PM
     const match = clean.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/);
     if (match) {
       let hours = parseInt(match[1], 10);
@@ -263,17 +285,16 @@ export const geminiService = {
         }
 
         results.push({
-          id: `ocr-local-${Date.now()}-${results.length}`,
-          code: code.trim(),
-          name: name.trim(),
+          id: `ocr-heur-${Date.now()}-${i}`,
+          code,
+          name,
           section: 'BSIT 3-A',
-          units: units,
+          units,
           days: this.parseDayString(dayStr),
           startTime: this.normalize24hTime(timeMatch[1]),
           endTime: this.normalize24hTime(timeMatch[2]),
-          room: room.trim(),
-          instructor: 'Department Faculty',
-          confidence: 0.92,
+          room,
+          confidence: 0.88,
           selected: true,
         });
       }
