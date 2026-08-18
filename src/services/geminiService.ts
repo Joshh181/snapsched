@@ -1,8 +1,13 @@
 import { OcrParsedClass, DayAbbreviation } from '../types/schedule';
 import { storageService } from './storageService';
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// Candidate models in order of priority
+const CANDIDATE_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-1.5-flash',
+  'gemini-2.0-flash-exp',
+  'gemini-1.5-pro',
+];
 
 const OCR_SYSTEM_PROMPT = `You are an expert academic schedule and Certificate of Registration (COR) parser.
 Analyze the provided registration slip, study load form, class schedule table, or timetable document image/text.
@@ -77,43 +82,58 @@ export const geminiService = {
     }`;
     payload.contents[0].parts.push({ text: promptText });
 
-    const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    let lastError: string = '';
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      const msg = errData?.error?.message || `Google Gemini API returned error code ${response.status}`;
-      throw new Error(`Gemini Vision Error: ${msg}`);
-    }
+    // Try candidate models in sequence
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
 
-    const data = await response.json();
-    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const msg = errData?.error?.message || `Status ${response.status}`;
+          lastError = `${modelName}: ${msg}`;
+          // If model is not available, continue to next candidate model
+          if (response.status === 404 || msg.includes('not found') || msg.includes('no longer available')) {
+            continue;
+          }
+          throw new Error(msg);
+        }
 
-    if (!rawContent.trim()) {
-      throw new Error('Gemini API returned an empty response for this image.');
-    }
+        const data = await response.json();
+        const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // Clean JSON formatting
-    const cleanedJson = rawContent
-      .replace(/```json/gi, '')
-      .replace(/```/g, '')
-      .trim();
+        if (!rawContent.trim()) {
+          continue;
+        }
 
-    try {
-      const parsedItems = JSON.parse(cleanedJson);
-      const formatted = this.formatParsedClasses(parsedItems);
-      if (formatted.length === 0) {
-        throw new Error('No class schedule items could be detected in the provided document.');
+        // Clean JSON formatting
+        const cleanedJson = rawContent
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .trim();
+
+        const parsedItems = JSON.parse(cleanedJson);
+        const formatted = this.formatParsedClasses(parsedItems);
+        if (formatted.length > 0) {
+          return formatted;
+        }
+      } catch (err: any) {
+        lastError = err.message || String(err);
+        if (err.message?.includes('API_KEY_INVALID') || err.message?.includes('API key not valid')) {
+          throw new Error('Your Gemini API key is invalid. Please check your .env file.');
+        }
       }
-      return formatted;
-    } catch (parseErr: any) {
-      throw new Error(`Failed to parse extracted schedule JSON: ${parseErr.message}`);
     }
+
+    throw new Error(`Gemini Vision Error: ${lastError || 'Could not parse document with Gemini models.'}`);
   },
 
   /**
