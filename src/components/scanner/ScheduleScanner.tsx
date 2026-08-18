@@ -7,26 +7,23 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { geminiService } from '../../services/geminiService';
-import { storageService } from '../../services/storageService';
 import { OcrParsedClass } from '../../types/schedule';
 import { PRELOADED_SAMPLE_CORS } from '../../data/sampleSchedules';
 import { OcrReviewTable } from './OcrReviewTable';
 
 interface ScheduleScannerProps {
   onImportClasses: (classes: OcrParsedClass[], replace: boolean) => void;
-  onOpenSettings: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
   onImportClasses,
-  onOpenSettings,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [parsedResults, setParsedResults] = useState<OcrParsedClass[] | null>(null);
   const [_selectedFile, setSelectedFile] = useState<{ name: string; previewUrl?: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [apiKey] = useState(() => storageService.getGeminiApiKey());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,10 +42,10 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
         reader.onload = async () => {
           const base64Data = (reader.result as string).split(',')[1];
           try {
-            const results = await geminiService.parseScheduleDocument(
-              { base64Image: base64Data, mimeType: file.type },
-              apiKey
-            );
+            const results = await geminiService.parseScheduleDocument({
+              base64Image: base64Data,
+              mimeType: file.type,
+            });
             setParsedResults(results);
           } catch (e: any) {
             setErrorMessage(e.message || 'Failed to parse image.');
@@ -59,7 +56,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
         reader.readAsDataURL(file);
       } else {
         const text = await file.text();
-        const results = await geminiService.parseScheduleDocument({ text }, apiKey);
+        const results = await geminiService.parseScheduleDocument({ text });
         setParsedResults(results);
         setIsProcessing(false);
       }
@@ -77,10 +74,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
 
     setTimeout(async () => {
       try {
-        const results = await geminiService.parseScheduleDocument(
-          { text: sample.sampleText },
-          apiKey
-        );
+        const results = await geminiService.parseScheduleDocument({ text: sample.sampleText });
         setParsedResults(results);
       } catch (e: any) {
         setErrorMessage(e.message);
@@ -131,24 +125,12 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
             Upload your COR image or document to extract class schedules automatically.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {apiKey ? (
-            <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
-              style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--status-success)' }} />
-              Gemini Vision AI Active
-            </div>
-          ) : (
-            <button
-              onClick={onOpenSettings}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:opacity-90 cursor-pointer"
-              style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)' }}
-            >
-              <span>⚙️ Add Gemini API Key</span>
-            </button>
-          )}
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
+          style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--status-success)' }} />
+          Ready
         </div>
       </div>
 
@@ -194,7 +176,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
                   <ScanLine className="w-5 h-5" />
                 </div>
                 <h3 className="font-medium text-[14px]" style={{ color: 'var(--text-primary)' }}>
-                  Scanning document...
+                  Scanning document with Gemini AI...
                 </h3>
                 <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
                   Extracting course codes, schedules, and rooms.
