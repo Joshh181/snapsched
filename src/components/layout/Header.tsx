@@ -3,6 +3,8 @@ import {
   Clock,
   Plus,
   Menu,
+  Sparkles,
+  Calendar as CalendarIcon,
   BookOpen,
 } from 'lucide-react';
 import { ScheduleSet } from '../../types/schedule';
@@ -28,6 +30,9 @@ export const Header: React.FC<HeaderProps> = ({
   currentStatus,
   currentTime,
 }) => {
+  const studentName = schedule.studentName || 'Josh';
+  const initial = studentName.charAt(0).toUpperCase() || 'J';
+
   const hour = currentTime.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -99,114 +104,102 @@ export const Header: React.FC<HeaderProps> = ({
   const status = getStatusConfig();
 
   return (
-    <header className="w-full max-w-[1500px] mx-auto px-3.5 pt-3.5 pb-1 md:px-6 md:pt-5 flex flex-col gap-2.5 select-none">
-      {/* Top Main Row: Logo on Left | Status & Actions on Right */}
-      <div className="flex items-center justify-between gap-3 w-full">
-        {/* Left: Hamburger + SnapSched Brand Logo */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-          {/* Mobile Hamburger Menu */}
-          <button
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 rounded-2xl bg-white shadow-xs border border-white/80 hover:bg-slate-50 transition-colors text-slate-600 shrink-0"
-            aria-label="Open navigation"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+    <header className="px-3 py-3 md:px-6 md:py-4 flex flex-col gap-3 select-none">
+      {/* Mobile Top Nav: Menu button on the left, Logo on the right */}
+      <div className="flex items-center justify-between w-full lg:hidden">
+        <button
+          onClick={onToggleSidebar}
+          className="p-2 rounded-xl bg-white shadow-xs border border-white/80 hover:bg-slate-50 transition-colors text-slate-600 active:scale-95 transition-transform"
+          aria-label="Open navigation"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
 
-          {/* SnapSched Logo on the Left */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center text-white shadow-sm"
-              style={{
-                background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
-                boxShadow: '0 2px 10px -2px rgba(79, 70, 229, 0.4)',
-              }}
-            >
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div>
-              <div className="font-bold text-[16px] sm:text-[18px] tracking-tight text-slate-900 leading-tight">
-                SnapSched
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium truncate max-w-[140px]">
-                {schedule.name || '1st Semester 2026-2027'}
-              </p>
-            </div>
-          </div>
-
-          {/* Vertical divider on desktop */}
-          <div className="hidden lg:block w-[1px] h-7 bg-slate-200/80 mx-1" />
-
-          {/* Desktop Greeting */}
-          <div className="hidden lg:block min-w-0">
-            <h1 className="text-[16px] font-bold tracking-tight text-slate-900">
-              {greeting}
-            </h1>
-            <p className="text-[11px] text-slate-500 font-medium truncate">
-              Here's your day at a glance.
-            </p>
-          </div>
-        </div>
-
-        {/* Right: Status Pill + Clock + Add Class Action */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Live Status Pill (hidden on very narrow screens in row 1, shown on row 2 or desktop) */}
+        <div className="flex items-center gap-2.5">
           <div
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl text-[12px] font-medium shadow-xs"
-            style={{
-              background: status.bg,
-              border: `1px solid ${status.border}`,
-              color: status.text,
-            }}
-          >
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${status.pulse ? 'animate-pulse' : ''}`}
-              style={{ backgroundColor: status.dotColor }}
-            ></span>
-            <span className="truncate max-w-[180px]">
-              {currentStatus.details}
-            </span>
-          </div>
-
-          {/* Live Clock Badge */}
-          <div
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-2xl text-[12px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
-          >
-            <Clock className="w-3.5 h-3.5 text-indigo-500" />
-            <span className="font-semibold text-slate-800 tabular-nums">{formattedTime}</span>
-            <span className="text-slate-400">·</span>
-            <span className="text-slate-500">{formattedDate}</span>
-          </div>
-
-          {/* Add Class Action Button (Top Right where arrow points!) */}
-          <button
-            onClick={onOpenAddModal}
-            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl font-semibold text-[12px] sm:text-[13px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0"
             style={{
               background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
             }}
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Class</span>
-          </button>
+            <BookOpen className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[15px] tracking-tight text-slate-900 leading-tight">
+              SnapSched
+            </div>
+            {schedule.name && (
+              <div className="text-[11px] text-slate-500 font-medium leading-tight truncate max-w-[150px]">
+                {schedule.name}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Mobile Sub-row: Live status banner for small screens */}
-      <div className="flex sm:hidden items-center justify-between gap-2 px-3 py-1.5 rounded-2xl text-[12px] font-medium bg-white/70 border border-white shadow-xs">
-        <div className="flex items-center gap-2 truncate">
+      {/* Main Row: Greeting on Left & Actions/Status on Right */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Left: Clean Greeting & Subtitle */}
+        <div className="min-w-0">
+          <h1 className="text-[22px] md:text-[24px] font-bold tracking-tight text-slate-900">
+            {greeting}
+          </h1>
+          <p className="text-[13px] text-slate-500 font-medium truncate mt-0.5">
+            Here's your day at a glance.
+          </p>
+        </div>
+
+      {/* Right: Floating Status Pill + Time Badge + Add Class Action */}
+      <div className="flex items-center gap-2.5 flex-wrap md:flex-nowrap shrink-0">
+        {/* Live Status Pill */}
+        <div
+          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium shadow-xs"
+          style={{
+            background: status.bg,
+            border: `1px solid ${status.border}`,
+            color: status.text,
+          }}
+        >
           <span
             className={`w-2 h-2 rounded-full shrink-0 ${status.pulse ? 'animate-pulse' : ''}`}
             style={{ backgroundColor: status.dotColor }}
           />
-          <span className="truncate text-slate-700">
+          <span className="truncate max-w-[200px]">
             {currentStatus.details}
           </span>
+          {status.timeText && (
+            <span
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-lg shrink-0 tabular-nums hidden sm:inline"
+              style={{ background: status.timeBg, color: status.timeColor }}
+            >
+              {status.timeText}
+            </span>
+          )}
         </div>
-        <span className="text-[11px] text-slate-400 shrink-0 font-medium">
-          {formattedTime}
-        </span>
+
+        {/* Live Clock Badge */}
+        <div
+          className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
+        >
+          <Clock className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="font-semibold text-slate-800 tabular-nums">{formattedTime}</span>
+          <span className="text-slate-400">·</span>
+          <span className="text-slate-500">{formattedDate}</span>
+        </div>
+
+        {/* Add Class Action Pill */}
+        <button
+          onClick={onOpenAddModal}
+          className="px-4 py-2 rounded-2xl font-semibold text-[13px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+          style={{
+            background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Class</span>
+        </button>
       </div>
-    </header>
-  );
+    </div>
+  </header>
+);
 };
