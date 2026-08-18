@@ -3,16 +3,11 @@ import {
   ScanLine,
   Upload,
   AlertCircle,
-  Zap,
   Sparkles,
-  CheckCircle2,
-  FileText,
-  Eye,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { geminiService } from '../../services/geminiService';
 import { OcrParsedClass } from '../../types/schedule';
-import { PRELOADED_SAMPLE_CORS } from '../../data/sampleSchedules';
 import { OcrReviewTable } from './OcrReviewTable';
 
 interface ScheduleScannerProps {
@@ -89,24 +84,6 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
       setErrorMessage(err.message || 'Failed to process document.');
       setIsProcessing(false);
     }
-  };
-
-  const handleLoadSample = async (sampleIndex: number) => {
-    const sample = PRELOADED_SAMPLE_CORS[sampleIndex];
-    setSelectedFile({ name: `${sample.title}.txt` });
-    setIsProcessing(true);
-    setErrorMessage(null);
-    setIsSuccessFlash(false);
-
-    setTimeout(async () => {
-      try {
-        const results = await geminiService.parseScheduleDocument({ text: sample.sampleText });
-        triggerSuccess(results);
-      } catch (e: any) {
-        setErrorMessage(e.message);
-        setIsProcessing(false);
-      }
-    }, 1500);
   };
 
   const triggerSuccess = (results: OcrParsedClass[]) => {
@@ -402,40 +379,6 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
               <span>{errorMessage}</span>
             </div>
           )}
-
-          {/* Sample Schedules */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4" style={{ color: 'var(--status-warning)' }} />
-              <h4 className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                Try a Sample University Schedule
-              </h4>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {PRELOADED_SAMPLE_CORS.map((sample, idx) => (
-                <button
-                  key={sample.id}
-                  onClick={() => handleLoadSample(idx)}
-                  disabled={isProcessing}
-                  className="p-3 rounded-lg text-left transition-all flex items-center justify-between gap-3 group"
-                  style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--brand-300)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
-                >
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{sample.title}</div>
-                    <div className="text-[12px] truncate" style={{ color: 'var(--text-tertiary)' }}>{sample.subtitle}</div>
-                  </div>
-                  <span
-                    className="px-2.5 py-1 rounded-md text-[12px] font-medium shrink-0 transition-colors"
-                    style={{ background: 'var(--surface-secondary)', color: 'var(--brand-700)', border: '1px solid var(--border-subtle)' }}
-                  >
-                    Test →
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>

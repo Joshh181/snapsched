@@ -7,6 +7,7 @@ import {
   Calendar,
   Clock,
   ArrowRight,
+  UserPlus,
 } from 'lucide-react';
 import { ScheduleSet, FriendSchedule, OverlapFreeSlot, DAYS_OF_WEEK } from '../../types/schedule';
 import { storageService } from '../../services/storageService';
@@ -62,8 +63,8 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({ userSchedule }
   const totalSharedHours = Math.round(commonFreeSlots.reduce((acc, slot) => acc + (timeToMinutes(slot.endTime) - timeToMinutes(slot.startTime)), 0) / 60);
 
   const handleCopyShareLink = () => {
-    const fakeLink = `https://snapsched.app/share/${userSchedule.id || '2026-sem1'}`;
-    navigator.clipboard?.writeText?.(fakeLink);
+    const shareLink = `https://snapsched.app/share/${userSchedule.id || 'schedule'}`;
+    navigator.clipboard?.writeText?.(shareLink);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
@@ -93,120 +94,149 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({ userSchedule }
         </button>
       </div>
 
-      {/* Classmate selector */}
-      <div
-        className="p-3 rounded-lg space-y-2"
-        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
-      >
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[12px] font-medium flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
-            <Users2 className="w-3.5 h-3.5" /> Select classmate
-          </span>
-          {activeFriend && (
-            <span className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-              Comparing: <strong style={{ color: 'var(--text-primary)' }}>{activeFriend.name}</strong> ({activeFriend.course})
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {friends.map((f) => {
-            const isSelected = f.id === selectedFriendId;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setSelectedFriendId(f.id)}
-                className="p-3 rounded-lg text-left transition-all flex items-center justify-between gap-2"
-                style={{
-                  background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
-                  border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
-                }}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-[13px]" style={{ color: isSelected ? 'var(--brand-800)' : 'var(--text-primary)' }}>
-                      {f.name}
-                    </span>
-                    <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{f.course}</span>
-                  </div>
-                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                    {f.schedule.items.length} classes
-                  </div>
-                </div>
-                {isSelected && (
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--brand-600)' }} />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Free slots */}
-      <div
-        className="p-4 rounded-lg space-y-3"
-        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
-      >
-        <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-          <div className="flex items-center gap-2">
-            <Coffee className="w-4 h-4" style={{ color: 'var(--status-warning)' }} />
-            <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
-              Shared Free Time ({commonFreeSlots.length} windows)
+      {friends.length === 0 ? (
+        <div
+          className="p-12 text-center rounded-lg space-y-3"
+          style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)' }}
+        >
+          <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center" style={{ background: 'var(--surface-secondary)', color: 'var(--text-muted)' }}>
+            <Users2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>
+              No Classmate Schedules Yet
             </h3>
+            <p className="text-[13px] mt-1 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+              Share your schedule link with blockmates to find mutual study hours, or import a classmate's JSON backup.
+            </p>
           </div>
-          <span
-            className="text-[12px] font-medium px-2.5 py-1 rounded-md"
-            style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+          <button
+            onClick={handleCopyShareLink}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-medium text-[13px] transition-colors"
+            style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
           >
-            {totalSharedHours} hours total
-          </span>
+            <Share2 className="w-4 h-4" />
+            {copiedLink ? 'Link Copied!' : 'Copy My Schedule Link'}
+          </button>
         </div>
+      ) : (
+        <>
+          {/* Classmate selector */}
+          <div
+            className="p-3 rounded-lg space-y-2"
+            style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+          >
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[12px] font-medium flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                <Users2 className="w-3.5 h-3.5" /> Select classmate
+              </span>
+              {activeFriend && (
+                <span className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+                  Comparing: <strong style={{ color: 'var(--text-primary)' }}>{activeFriend.name}</strong> ({activeFriend.course})
+                </span>
+              )}
+            </div>
 
-        {commonFreeSlots.length === 0 ? (
-          <div className="py-10 text-center" style={{ color: 'var(--text-tertiary)' }}>
-            <Users2 className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-            <p className="text-[14px] font-medium" style={{ color: 'var(--text-secondary)' }}>No overlapping free time found</p>
-            <p className="text-[13px] mt-1">No 60+ minute shared free periods with {activeFriend?.name}.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {friends.map((f) => {
+                const isSelected = f.id === selectedFriendId;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setSelectedFriendId(f.id)}
+                    className="p-3 rounded-lg text-left transition-all flex items-center justify-between gap-2"
+                    style={{
+                      background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                      border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-[13px]" style={{ color: isSelected ? 'var(--brand-800)' : 'var(--text-primary)' }}>
+                          {f.name}
+                        </span>
+                        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{f.course}</span>
+                      </div>
+                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                        {f.schedule.items.length} classes
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--brand-600)' }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {commonFreeSlots.map((slot) => (
-              <div
-                key={slot.id}
-                className="p-3 rounded-lg flex flex-col justify-between gap-2 group transition-all"
-                style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-                    <span className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>{slot.dayFull}</span>
-                  </div>
-                  <span
-                    className="text-[11px] font-medium px-1.5 py-0.5 rounded-md"
-                    style={{ background: 'var(--status-warning-bg)', color: '#92400e', border: '1px solid var(--status-warning-border)' }}
-                  >
-                    {slot.durationFormatted}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[12px] pt-1.5" style={{ borderTop: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                  <div className="flex items-center gap-1 tabular-nums">
-                    <Clock className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-                    {format12Hour(slot.startTime)} – {format12Hour(slot.endTime)}
-                  </div>
-                  <span
-                    className="font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform"
-                    style={{ color: 'var(--brand-600)' }}
-                  >
-                    Study <ArrowRight className="w-3 h-3" />
-                  </span>
-                </div>
+
+          {/* Free slots */}
+          <div
+            className="p-4 rounded-lg space-y-3"
+            style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+          >
+            <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <div className="flex items-center gap-2">
+                <Coffee className="w-4 h-4" style={{ color: 'var(--status-warning)' }} />
+                <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
+                  Shared Free Time ({commonFreeSlots.length} windows)
+                </h3>
               </div>
-            ))}
+              <span
+                className="text-[12px] font-medium px-2.5 py-1 rounded-md"
+                style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+              >
+                {totalSharedHours} hours total
+              </span>
+            </div>
+
+            {commonFreeSlots.length === 0 ? (
+              <div className="py-10 text-center" style={{ color: 'var(--text-tertiary)' }}>
+                <Users2 className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+                <p className="text-[14px] font-medium" style={{ color: 'var(--text-secondary)' }}>No overlapping free time found</p>
+                <p className="text-[13px] mt-1">No 60+ minute shared free periods with {activeFriend?.name}.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {commonFreeSlots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="p-3 rounded-lg flex flex-col justify-between gap-2 group transition-all"
+                    style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                        <span className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>{slot.dayFull}</span>
+                      </div>
+                      <span
+                        className="text-[11px] font-medium px-1.5 py-0.5 rounded-md"
+                        style={{ background: 'var(--status-warning-bg)', color: '#92400e', border: '1px solid var(--status-warning-border)' }}
+                      >
+                        {slot.durationFormatted}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px] pt-1.5" style={{ borderTop: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                      <div className="flex items-center gap-1 tabular-nums">
+                        <Clock className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                        {format12Hour(slot.startTime)} – {format12Hour(slot.endTime)}
+                      </div>
+                      <span
+                        className="font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform"
+                        style={{ color: 'var(--brand-600)' }}
+                      >
+                        Study <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };
