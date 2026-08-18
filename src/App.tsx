@@ -1,15 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar, ActiveTab } from './components/layout/Sidebar';
-import { Header } from './components/layout/Header';
-import { TimetableGrid } from './components/timetable/TimetableGrid';
-import { ClassModal } from './components/timetable/ClassModal';
-import { ScheduleScanner } from './components/scanner/ScheduleScanner';
-import { VacantBreakPlanner } from './components/planner/VacantBreakPlanner';
-import { ScheduleCompare } from './components/compare/ScheduleCompare';
-import { SettingsModal } from './components/settings/SettingsModal';
-import { useSchedule } from './hooks/useSchedule';
-import { useVacantPeriods } from './hooks/useVacantPeriods';
-import { ClassItem, VacantPeriod } from './types/schedule';
 import {
   Calendar,
   ScanLine,
@@ -17,27 +6,39 @@ import {
   Users2,
   Settings,
 } from 'lucide-react';
+import { useSchedule } from './hooks/useSchedule';
+import { useVacantPeriods } from './hooks/useVacantPeriods';
+import { storageService } from './services/storageService';
+import { Sidebar, ActiveTab } from './components/layout/Sidebar';
+import { Header } from './components/layout/Header';
+import { TimetableGrid } from './components/timetable/TimetableGrid';
+import { ScheduleScanner } from './components/scanner/ScheduleScanner';
+import { VacantBreakPlanner } from './components/planner/VacantBreakPlanner';
+import { ScheduleCompare } from './components/compare/ScheduleCompare';
+import { SettingsModal } from './components/settings/SettingsModal';
+import { ClassModal } from './components/timetable/ClassModal';
+import { ClassItem, VacantPeriod } from './types/schedule';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('timetable');
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
-  const [targetVacantForPlanner, setTargetVacantForPlanner] = useState<VacantPeriod | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [targetVacantForPlanner, setTargetVacantForPlanner] = useState<VacantPeriod | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    return storageService.getCategories()[0]?.name || 'School';
+  });
 
   const {
     schedule,
     classes,
     allSets,
-    isSyncing,
-    syncMessage,
     addClassItem,
     updateClassItem,
     deleteClassItem,
     importOcrClasses,
     switchScheduleSet,
     createNewScheduleSet,
-    syncToCloud,
     resetToSample,
   } = useSchedule();
 
@@ -152,6 +153,8 @@ export function App() {
                   vacantPeriods={allVacantPeriods}
                   todayAbbr={todayAbbr}
                   currentTime={currentTime}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
                   onEditClass={handleOpenEditModal}
                   onDeleteClass={deleteClassItem}
                   onAddClass={handleOpenAddModal}
@@ -162,7 +165,9 @@ export function App() {
               {activeTab === 'scanner' && (
                 <ScheduleScanner
                   onImportClasses={(imported, replace) => {
+                    const targetCat = imported[0]?.category || selectedCategory || 'School';
                     importOcrClasses(imported, replace);
+                    setSelectedCategory(targetCat);
                     setActiveTab('timetable');
                   }}
                   onOpenSettings={() => setActiveTab('settings')}
@@ -200,6 +205,7 @@ export function App() {
           onSave={addClassItem}
           onUpdate={updateClassItem}
           initialData={editingClass}
+          activeCategory={selectedCategory}
         />
       </div>
 
@@ -244,3 +250,4 @@ export function App() {
 }
 
 export default App;
+

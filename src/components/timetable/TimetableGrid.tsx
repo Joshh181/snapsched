@@ -27,6 +27,8 @@ interface TimetableGridProps {
   onDeleteClass: (id: string) => void;
   onAddClass?: () => void;
   onSelectVacant?: (vacant: VacantPeriod) => void;
+  selectedCategory?: string;
+  onSelectCategory?: (cat: string) => void;
 }
 
 interface PositionedClass {
@@ -130,16 +132,25 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   onEditClass,
   onDeleteClass,
   onSelectVacant,
+  selectedCategory: propCategory,
+  onSelectCategory,
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'agenda'>('grid');
   const [selectedDayFilter, setSelectedDayFilter] = useState<DayAbbreviation | 'ALL'>('ALL');
   
   // Categories state
   const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
-  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+  const [internalCategory, setInternalCategory] = useState<string>(() => {
     const stored = storageService.getCategories();
     return stored[0]?.name || 'School';
   });
+
+  const activeCategoryName = propCategory || internalCategory;
+
+  const handleSelectCat = (catName: string) => {
+    setInternalCategory(catName);
+    onSelectCategory?.(catName);
+  };
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState(COLOR_PALETTES[0]);
@@ -183,19 +194,18 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     if (!newCatName.trim()) return;
     const created = storageService.addCategory(newCatName.trim(), newCatColor);
     setCategories(storageService.getCategories());
-    setSelectedCategory(created.name);
+    handleSelectCat(created.name);
     setNewCatName('');
     setIsAddingCategory(false);
   };
 
   // Filter classes by active category
   const filteredClasses = useMemo(() => {
-    if (selectedCategory === 'ALL') return classes;
     return classes.filter((c) => {
       const itemCat = c.category || 'School';
-      return itemCat.toLowerCase() === selectedCategory.toLowerCase();
+      return itemCat.toLowerCase() === activeCategoryName.toLowerCase();
     });
-  }, [classes, selectedCategory]);
+  }, [classes, activeCategoryName]);
 
   const hourHeight = 44;
 
@@ -247,13 +257,13 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
           {/* Category Pills */}
           {categories.map((cat) => {
-            const isSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+            const isSelected = activeCategoryName.toLowerCase() === cat.name.toLowerCase();
             const count = classes.filter((c) => (c.category || 'School').toLowerCase() === cat.name.toLowerCase()).length;
 
             return (
               <button
                 key={cat.id}
-                onClick={() => setSelectedCategory(cat.name)}
+                onClick={() => handleSelectCat(cat.name)}
                 className="px-3 py-1 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5 shrink-0"
                 style={{
                   background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
@@ -795,7 +805,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                 {/* Day items */}
                 {dayClasses.length === 0 ? (
                   <div className="py-6 text-center text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
-                    No items scheduled for {d.full} in {selectedCategory === 'ALL' ? 'any category' : selectedCategory}
+                    No items scheduled for {d.full} in {activeCategoryName}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -868,8 +878,8 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                             </div>
                           </div>
 
-                          {/* Break after (only shown in ALL category view) */}
-                          {selectedCategory === 'ALL' && breakAfter && (
+                          {/* Break after */}
+                          {breakAfter && (
                             <div
                               onClick={() => onSelectVacant?.(breakAfter)}
                               className="p-2.5 rounded-lg flex items-center justify-between cursor-pointer transition-colors text-[13px]"

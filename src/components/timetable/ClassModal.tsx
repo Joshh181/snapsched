@@ -10,6 +10,7 @@ interface ClassModalProps {
   onSave: (classData: Omit<ClassItem, 'id'>) => void;
   onUpdate?: (id: string, classData: Partial<ClassItem>) => void;
   initialData?: ClassItem | null;
+  activeCategory?: string;
 }
 
 export const ClassModal: React.FC<ClassModalProps> = ({
@@ -18,9 +19,10 @@ export const ClassModal: React.FC<ClassModalProps> = ({
   onSave,
   onUpdate,
   initialData,
+  activeCategory = 'School',
 }) => {
   const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
-  const [category, setCategory] = useState('School');
+  const [category, setCategory] = useState(activeCategory);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [section, setSection] = useState('');
@@ -42,7 +44,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
     if (initialData) {
       setCode(initialData.code);
       setName(initialData.name);
-      setCategory(initialData.category || 'School');
+      setCategory(initialData.category || activeCategory);
       setSection(initialData.section || '');
       setInstructor(initialData.instructor || '');
       setRoom(initialData.room);
@@ -53,21 +55,23 @@ export const ClassModal: React.FC<ClassModalProps> = ({
       setUnits(initialData.units || 3);
       setNotes(initialData.notes || '');
     } else {
+      const defaultCat = activeCategory || 'School';
       setCode('');
       setName('');
-      setCategory('School');
+      setCategory(defaultCat);
       setSection('BSIT 3-A');
       setInstructor('');
       setRoom('');
       setDays(['M', 'W']);
       setStartTime('08:00');
       setEndTime('09:30');
-      setColor(COLOR_PALETTES[0]);
+      const matched = storageService.getCategories().find((c) => c.name.toLowerCase() === defaultCat.toLowerCase());
+      setColor(matched?.color || COLOR_PALETTES[0]);
       setUnits(3);
       setNotes('');
     }
     setErrors({});
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, activeCategory]);
 
   if (!isOpen) return null;
 
