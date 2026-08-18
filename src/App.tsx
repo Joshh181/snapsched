@@ -10,12 +10,20 @@ import { SettingsModal } from './components/settings/SettingsModal';
 import { useSchedule } from './hooks/useSchedule';
 import { useVacantPeriods } from './hooks/useVacantPeriods';
 import { ClassItem, VacantPeriod } from './types/schedule';
+import {
+  Calendar,
+  ScanLine,
+  Coffee,
+  Users2,
+  Settings,
+} from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('timetable');
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [targetVacantForPlanner, setTargetVacantForPlanner] = useState<VacantPeriod | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const {
     schedule,
@@ -39,6 +47,17 @@ export function App() {
     currentStatus,
     currentTime,
   } = useVacantPeriods(classes);
+
+  // Close sidebar on window resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -76,11 +95,29 @@ export function App() {
     setActiveTab('breaks');
   };
 
+  const mobileNavItems = [
+    { id: 'timetable' as ActiveTab, icon: Calendar, label: 'Timetable' },
+    { id: 'scanner' as ActiveTab, icon: ScanLine, label: 'Scanner' },
+    { id: 'breaks' as ActiveTab, icon: Coffee, label: 'Planner' },
+    { id: 'compare' as ActiveTab, icon: Users2, label: 'Compare' },
+    { id: 'settings' as ActiveTab, icon: Settings, label: 'Settings' },
+  ];
+
   return (
-    <div className="min-h-screen bg-zinc-100/60 text-zinc-900 selection:bg-blue-600 selection:text-white flex justify-center">
-      {/* 1280px Bounded Application Shell (AppBuilders Dimension) */}
-      <div className="w-full max-w-7xl min-h-screen flex bg-zinc-50 border-x border-zinc-200/80 shadow-xs">
-        {/* 208px Side Navigation Rail */}
+    <div
+      className="min-h-screen flex justify-center"
+      style={{ background: 'var(--surface-ground)', color: 'var(--text-primary)' }}
+    >
+      {/* Bounded application shell */}
+      <div
+        className="w-full max-w-[1400px] min-h-screen flex"
+        style={{
+          background: 'var(--surface-primary)',
+          borderLeft: '1px solid var(--border-subtle)',
+          borderRight: '1px solid var(--border-subtle)',
+        }}
+      >
+        {/* Sidebar */}
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -88,75 +125,120 @@ export function App() {
           allSets={allSets}
           onSelectSet={switchScheduleSet}
           vacantCount={allVacantPeriods.length}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
         />
 
-        {/* Main Content Area */}
+        {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top 44px Control Bar */}
+          {/* Top header bar */}
           <Header
             schedule={schedule}
             onOpenAddModal={handleOpenAddModal}
+            onToggleSidebar={() => setIsSidebarOpen(true)}
             currentStatus={currentStatus}
             currentTime={currentTime}
           />
 
-          {/* Dynamic Workspace Canvas */}
-          <main className="flex-1 p-3 md:p-4 pb-16 md:pb-4 w-full animate-fade-in">
-          {activeTab === 'timetable' && (
-            <TimetableGrid
-              classes={classes}
-              vacantPeriods={allVacantPeriods}
-              todayAbbr={todayAbbr}
-              currentTime={currentTime}
-              onEditClass={handleOpenEditModal}
-              onDeleteClass={deleteClassItem}
-              onAddClass={handleOpenAddModal}
-              onSelectVacant={handleSelectVacantFromGrid}
-            />
-          )}
+          {/* Workspace content */}
+          <main
+            className="flex-1 p-4 md:p-5 lg:p-6 w-full pb-20 lg:pb-6"
+            style={{ background: 'var(--surface-ground)' }}
+          >
+            <div className="animate-fade-in">
+              {activeTab === 'timetable' && (
+                <TimetableGrid
+                  classes={classes}
+                  vacantPeriods={allVacantPeriods}
+                  todayAbbr={todayAbbr}
+                  currentTime={currentTime}
+                  onEditClass={handleOpenEditModal}
+                  onDeleteClass={deleteClassItem}
+                  onAddClass={handleOpenAddModal}
+                  onSelectVacant={handleSelectVacantFromGrid}
+                />
+              )}
 
-          {activeTab === 'scanner' && (
-            <ScheduleScanner
-              onImportClasses={(imported, replace) => {
-                importOcrClasses(imported, replace);
-                setActiveTab('timetable');
+              {activeTab === 'scanner' && (
+                <ScheduleScanner
+                  onImportClasses={(imported, replace) => {
+                    importOcrClasses(imported, replace);
+                    setActiveTab('timetable');
+                  }}
+                  onOpenSettings={() => setActiveTab('settings')}
+                />
+              )}
+
+              {activeTab === 'breaks' && (
+                <VacantBreakPlanner
+                  vacantPeriods={allVacantPeriods}
+                  selectedVacant={targetVacantForPlanner}
+                />
+              )}
+
+              {activeTab === 'compare' && (
+                <ScheduleCompare userSchedule={schedule} />
+              )}
+
+              {activeTab === 'settings' && (
+                <SettingsModal
+                  schedule={schedule}
+                  allSets={allSets}
+                  onSelectSet={switchScheduleSet}
+                  onCreateSet={createNewScheduleSet}
+                  onResetToSample={resetToSample}
+                />
+              )}
+            </div>
+          </main>
+        </div>
+
+        {/* Add / Edit Class Modal */}
+        <ClassModal
+          isOpen={isClassModalOpen}
+          onClose={() => setIsClassModalOpen(false)}
+          onSave={addClassItem}
+          onUpdate={updateClassItem}
+          initialData={editingClass}
+        />
+      </div>
+
+      {/* Mobile bottom navigation */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 lg:hidden flex items-center justify-around px-2 py-1"
+        style={{
+          background: 'var(--surface-primary)',
+          borderTop: '1px solid var(--border-default)',
+          zIndex: 'var(--z-sticky)',
+          boxShadow: '0 -1px 3px rgba(0,0,0,0.06)',
+        }}
+      >
+        {mobileNavItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg transition-colors min-w-[56px]"
+              style={{
+                color: isActive ? 'var(--brand-600)' : 'var(--text-muted)',
               }}
-              onOpenSettings={() => setActiveTab('settings')}
-            />
-          )}
-
-          {activeTab === 'breaks' && (
-            <VacantBreakPlanner
-              vacantPeriods={allVacantPeriods}
-              selectedVacant={targetVacantForPlanner}
-            />
-          )}
-
-          {activeTab === 'compare' && (
-            <ScheduleCompare userSchedule={schedule} />
-          )}
-
-          {activeTab === 'settings' && (
-            <SettingsModal
-              schedule={schedule}
-              allSets={allSets}
-              onSelectSet={switchScheduleSet}
-              onCreateSet={createNewScheduleSet}
-              onResetToSample={resetToSample}
-            />
-          )}
-        </main>
-      </div>
-
-      {/* Add / Edit Class Modal Dialog */}
-      <ClassModal
-        isOpen={isClassModalOpen}
-        onClose={() => setIsClassModalOpen(false)}
-        onSave={addClassItem}
-        onUpdate={updateClassItem}
-        initialData={editingClass}
-      />
-      </div>
+            >
+              <Icon className="w-5 h-5" />
+              <span
+                className="text-[10px] font-medium"
+                style={{
+                  color: isActive ? 'var(--brand-600)' : 'var(--text-muted)',
+                  fontWeight: isActive ? 600 : 500,
+                }}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

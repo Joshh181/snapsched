@@ -1,13 +1,15 @@
 import React from 'react';
-import { 
-  Clock, 
-  Plus 
+import {
+  Clock,
+  Plus,
+  Menu,
 } from 'lucide-react';
 import { ScheduleSet } from '../../types/schedule';
 
 interface HeaderProps {
   schedule: ScheduleSet;
   onOpenAddModal: () => void;
+  onToggleSidebar: () => void;
   currentStatus: {
     type: 'class' | 'break' | 'upcoming' | 'free';
     title: string;
@@ -21,6 +23,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   schedule: _schedule,
   onOpenAddModal,
+  onToggleSidebar,
   currentStatus,
   currentTime,
 }) => {
@@ -36,81 +39,143 @@ export const Header: React.FC<HeaderProps> = ({
     hour12: true,
   });
 
-  const getStatusBadge = () => {
+  const getStatusConfig = () => {
     switch (currentStatus.type) {
       case 'class':
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
-            <span className="font-semibold">In Class:</span>
-            <span className="text-zinc-800 truncate max-w-[150px]">{currentStatus.details}</span>
-            {currentStatus.endsIn && (
-              <span className="font-mono text-[10px] text-blue-800 bg-blue-100/80 px-1 rounded">
-                {currentStatus.endsIn} left
-              </span>
-            )}
-          </div>
-        );
+        return {
+          dotColor: 'var(--brand-600)',
+          bg: 'var(--brand-50)',
+          border: 'var(--brand-200)',
+          text: 'var(--brand-700)',
+          label: 'In Class',
+          timeBg: 'var(--brand-100)',
+          timeColor: 'var(--brand-800)',
+          timeText: currentStatus.endsIn ? `${currentStatus.endsIn} left` : '',
+          pulse: true,
+        };
       case 'break':
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            <span className="font-semibold">Break:</span>
-            <span className="text-zinc-800 truncate max-w-[150px]">{currentStatus.details}</span>
-            {currentStatus.endsIn && (
-              <span className="font-mono text-[10px] text-amber-800 bg-amber-100/80 px-1 rounded">
-                {currentStatus.endsIn} left
-              </span>
-            )}
-          </div>
-        );
+        return {
+          dotColor: 'var(--status-warning)',
+          bg: 'var(--status-warning-bg)',
+          border: 'var(--status-warning-border)',
+          text: '#92400e',
+          label: 'Free Time',
+          timeBg: '#fef3c7',
+          timeColor: '#92400e',
+          timeText: currentStatus.endsIn ? `${currentStatus.endsIn} left` : '',
+          pulse: false,
+        };
       case 'upcoming':
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            <span className="font-semibold">Next:</span>
-            <span className="text-zinc-800 truncate max-w-[150px]">{currentStatus.details}</span>
-            {currentStatus.startsIn && (
-              <span className="font-mono text-[10px] text-emerald-800 bg-emerald-100/80 px-1 rounded">
-                in {currentStatus.startsIn}
-              </span>
-            )}
-          </div>
-        );
+        return {
+          dotColor: 'var(--status-success)',
+          bg: 'var(--status-success-bg)',
+          border: 'var(--status-success-border)',
+          text: '#065f46',
+          label: 'Next',
+          timeBg: '#d1fae5',
+          timeColor: '#065f46',
+          timeText: currentStatus.startsIn ? `in ${currentStatus.startsIn}` : '',
+          pulse: false,
+        };
       default:
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-600 text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
-            <span>{currentStatus.details}</span>
-          </div>
-        );
+        return {
+          dotColor: 'var(--text-muted)',
+          bg: 'var(--surface-secondary)',
+          border: 'var(--border-default)',
+          text: 'var(--text-secondary)',
+          label: '',
+          timeBg: 'var(--surface-tertiary)',
+          timeColor: 'var(--text-secondary)',
+          timeText: '',
+          pulse: false,
+        };
     }
   };
 
+  const status = getStatusConfig();
+
   return (
-    <header className="h-11 bg-white/95 border-b border-zinc-200/90 px-4 flex items-center justify-between backdrop-blur-md sticky top-0 z-20 select-none shadow-2xs">
-      {/* Left: Real-time Status Badge */}
-      <div className="flex items-center gap-3">
-        {getStatusBadge()}
+    <header
+      className="h-14 px-4 flex items-center justify-between sticky top-0 select-none"
+      style={{
+        background: 'var(--surface-primary)',
+        borderBottom: '1px solid var(--border-default)',
+        zIndex: 'var(--z-header)',
+        boxShadow: 'var(--shadow-xs)',
+      }}
+    >
+      {/* Left: Mobile menu + Status */}
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        {/* Mobile hamburger */}
+        <button
+          onClick={onToggleSidebar}
+          className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 transition-colors"
+          aria-label="Open navigation"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Status badge */}
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] max-w-full min-w-0"
+          style={{
+            background: status.bg,
+            border: `1px solid ${status.border}`,
+            color: status.text,
+          }}
+        >
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${status.pulse ? 'animate-pulse' : ''}`}
+            style={{ backgroundColor: status.dotColor }}
+          />
+          {status.label && (
+            <span className="font-semibold shrink-0">{status.label}:</span>
+          )}
+          <span className="truncate" style={{ color: 'var(--text-primary)' }}>
+            {currentStatus.details}
+          </span>
+          {status.timeText && (
+            <span
+              className="text-[11px] font-medium px-1.5 py-0.5 rounded-md shrink-0 tabular-nums hidden sm:inline"
+              style={{ background: status.timeBg, color: status.timeColor }}
+            >
+              {status.timeText}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Right: Clock & Add Class Button */}
-      <div className="flex items-center gap-2">
-        {/* Live Clock */}
-        <div className="flex items-center gap-1.5 text-xs text-zinc-600 font-mono bg-zinc-50 px-2.5 py-1 rounded-md border border-zinc-200">
-          <Clock className="w-3 h-3 text-zinc-400" />
-          <span className="hidden sm:inline">{formattedDate}</span>
-          <span className="hidden sm:inline text-zinc-300">•</span>
-          <span className="font-semibold text-zinc-800">{formattedTime}</span>
+      {/* Right: Clock + Add */}
+      <div className="flex items-center gap-2 shrink-0 ml-3">
+        {/* Clock */}
+        <div
+          className="hidden sm:flex items-center gap-2 text-[13px] px-3 py-1.5 rounded-lg"
+          style={{
+            background: 'var(--surface-secondary)',
+            border: '1px solid var(--border-subtle)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+          <span className="hidden md:inline">{formattedDate}</span>
+          <span className="hidden md:inline" style={{ color: 'var(--border-strong)' }}>·</span>
+          <span className="font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
+            {formattedTime}
+          </span>
         </div>
 
-        {/* Add Class Button */}
+        {/* Add Class */}
         <button
           onClick={onOpenAddModal}
-          className="flex items-center gap-1 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-xs transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-white font-medium text-[13px] transition-colors hover:opacity-90"
+          style={{
+            background: 'var(--brand-600)',
+            boxShadow: 'var(--shadow-xs)',
+          }}
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Class</span>
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Add Class</span>
         </button>
       </div>
     </header>

@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { 
-  ScanLine, 
-  Upload, 
-  Key, 
-  AlertCircle, 
-  Zap
+import {
+  ScanLine,
+  Upload,
+  AlertCircle,
+  Zap,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { geminiService } from '../../services/geminiService';
@@ -31,10 +30,8 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Trigger file selection
   const handleFileSelect = async (file: File) => {
     if (!file) return;
-
     setSelectedFile({
       name: file.name,
       previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
@@ -49,10 +46,7 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
           const base64Data = (reader.result as string).split(',')[1];
           try {
             const results = await geminiService.parseScheduleDocument(
-              {
-                base64Image: base64Data,
-                mimeType: file.type,
-              },
+              { base64Image: base64Data, mimeType: file.type },
               apiKey
             );
             setParsedResults(results);
@@ -75,7 +69,6 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
     }
   };
 
-  // Instant 1-Click Preloaded Sample Test
   const handleLoadSample = async (sampleIndex: number) => {
     const sample = PRELOADED_SAMPLE_CORS[sampleIndex];
     setSelectedFile({ name: `${sample.title}.txt` });
@@ -97,77 +90,56 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
     }, 1000);
   };
 
-  // Table edit helpers
   const handleToggleSelect = (id: string) => {
     if (!parsedResults) return;
-    setParsedResults(
-      parsedResults.map((item) =>
-        item.id === id ? { ...item, selected: !item.selected } : item
-      )
-    );
+    setParsedResults(parsedResults.map((item) => item.id === id ? { ...item, selected: !item.selected } : item));
   };
-
   const handleSelectAll = (select: boolean) => {
     if (!parsedResults) return;
     setParsedResults(parsedResults.map((item) => ({ ...item, selected: select })));
   };
-
   const handleDeleteItem = (id: string) => {
     if (!parsedResults) return;
     setParsedResults(parsedResults.filter((item) => item.id !== id));
   };
-
   const handleUpdateItem = (id: string, updated: Partial<OcrParsedClass>) => {
     if (!parsedResults) return;
-    setParsedResults(
-      parsedResults.map((item) => (item.id === id ? { ...item, ...updated } : item))
-    );
+    setParsedResults(parsedResults.map((item) => (item.id === id ? { ...item, ...updated } : item)));
   };
-
   const handleConfirmImport = (replace: boolean) => {
     if (!parsedResults) return;
     const selected = parsedResults.filter((i) => i.selected);
     if (selected.length === 0) return;
-
     onImportClasses(selected, replace);
-
-    try {
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.6 },
-      });
-    } catch (e) {}
-
+    try { confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } }); } catch (e) {}
     setParsedResults(null);
     setSelectedFile(null);
   };
 
   return (
-    <div className="space-y-3.5 max-w-4xl mx-auto select-none">
-      {/* Header Panel */}
-      <div className="p-4 rounded-xl bg-white border border-zinc-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+    <div className="space-y-4 max-w-4xl mx-auto select-none animate-fade-in">
+      {/* Header */}
+      <div
+        className="p-4 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-sm text-zinc-900">
-              COR Document Scanner
-            </h2>
-            <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">
-              OCR Engine
-            </span>
-          </div>
-          <p className="text-xs text-zinc-600 max-w-lg mt-0.5 leading-relaxed">
-            Upload your university Certificate of Registration (COR) image or PDF to extract schedules automatically.
+          <h2 className="font-semibold text-[16px]" style={{ color: 'var(--text-primary)' }}>
+            Schedule Scanner
+          </h2>
+          <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            Upload your COR image or document to extract class schedules automatically.
           </p>
         </div>
-
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-xs font-mono text-emerald-800">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Ready to Scan</span>
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
+          style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--status-success)' }} />
+          Ready
         </div>
       </div>
 
-      {/* If we have parsed results, show Review Table */}
       {parsedResults ? (
         <OcrReviewTable
           items={parsedResults}
@@ -176,115 +148,112 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
           onDeleteItem={handleDeleteItem}
           onUpdateItem={handleUpdateItem}
           onConfirmImport={handleConfirmImport}
-          onReset={() => {
-            setParsedResults(null);
-            setSelectedFile(null);
-          }}
+          onReset={() => { setParsedResults(null); setSelectedFile(null); }}
         />
       ) : (
-        /* Upload Area & Sample Selectors */
-        <div className="space-y-3.5">
-          {/* Drag & Drop Upload Zone */}
+        <div className="space-y-4">
+          {/* Upload zone */}
           <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                handleFileSelect(e.dataTransfer.files[0]);
-              }
+              e.preventDefault(); setIsDragging(false);
+              if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0]);
             }}
-            className={`rounded-xl border border-dashed p-8 text-center transition-colors cursor-pointer ${
-              isDragging
-                ? 'border-blue-500 bg-blue-50/50'
-                : 'border-zinc-300 bg-white hover:border-zinc-400 hover:bg-zinc-50/60 shadow-xs'
-            }`}
+            className="rounded-lg p-10 text-center cursor-pointer transition-all"
+            style={{
+              background: isDragging ? 'var(--brand-50)' : 'var(--surface-primary)',
+              border: isDragging ? '2px dashed var(--brand-400)' : '2px dashed var(--border-strong)',
+              boxShadow: isDragging ? 'none' : 'var(--shadow-xs)',
+            }}
             onClick={() => fileInputRef.current?.click()}
           >
             <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,.pdf,.txt"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  handleFileSelect(e.target.files[0]);
-                }
-              }}
+              ref={fileInputRef} type="file" accept="image/*,.pdf,.txt" className="hidden"
+              onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]); }}
             />
 
-            {/* Processing / Scanning Animation */}
             {isProcessing ? (
-              <div className="py-6 space-y-2.5">
-                <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 mx-auto flex items-center justify-center animate-pulse text-blue-600">
+              <div className="space-y-3">
+                <div
+                  className="w-10 h-10 rounded-lg mx-auto flex items-center justify-center animate-pulse"
+                  style={{ background: 'var(--brand-50)', border: '1px solid var(--brand-200)', color: 'var(--brand-600)' }}
+                >
                   <ScanLine className="w-5 h-5" />
                 </div>
-                <h3 className="font-medium text-xs text-zinc-900">
-                  Parsing COR Document...
+                <h3 className="font-medium text-[14px]" style={{ color: 'var(--text-primary)' }}>
+                  Scanning document...
                 </h3>
-                <p className="text-[11px] font-mono text-zinc-500 max-w-sm mx-auto">
-                  Extracting course codes, schedules, and room locations.
+                <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
+                  Extracting course codes, schedules, and rooms.
                 </p>
               </div>
             ) : (
-              <div className="py-4 space-y-2.5">
-                <div className="w-9 h-9 rounded-lg bg-zinc-100 border border-zinc-200 mx-auto flex items-center justify-center text-zinc-600">
-                  <Upload className="w-4 h-4" />
+              <div className="space-y-3">
+                <div
+                  className="w-10 h-10 rounded-lg mx-auto flex items-center justify-center"
+                  style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}
+                >
+                  <Upload className="w-5 h-5" />
                 </div>
-
-                <div className="space-y-0.5">
-                  <h3 className="font-medium text-xs text-zinc-900">
-                    Drop your Certificate of Registration (COR) image or PDF
+                <div>
+                  <h3 className="font-medium text-[14px]" style={{ color: 'var(--text-primary)' }}>
+                    Drop your COR or schedule document
                   </h3>
-                  <p className="text-[11px] font-mono text-zinc-400">
-                    Supports JPG, PNG, PDF, or text load slips
+                  <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    Supports JPG, PNG, PDF, or text files
                   </p>
                 </div>
-
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-xs shadow-2xs transition-colors">
-                  <ScanLine className="w-3.5 h-3.5" />
-                  <span>Select File</span>
-                </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-medium text-[13px] transition-colors"
+                  style={{ background: 'var(--text-primary)', boxShadow: 'var(--shadow-xs)' }}
+                >
+                  <ScanLine className="w-4 h-4" />
+                  Select File
+                </button>
               </div>
             )}
           </div>
 
-          {/* Error Banner */}
+          {/* Error */}
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <div
+              className="p-3 rounded-lg flex items-center gap-2 text-[13px]"
+              style={{ background: 'var(--status-error-bg)', border: '1px solid var(--status-error-border)', color: 'var(--status-error)' }}
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Instant 1-Click Sample Testing Section */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <h4 className="font-mono text-xs text-zinc-600 uppercase tracking-wider font-semibold">
-                Sample Pre-loaded Schedules
+          {/* Sample schedules */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4" style={{ color: 'var(--status-warning)' }} />
+              <h4 className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Try a Sample Schedule
               </h4>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {PRELOADED_SAMPLE_CORS.map((sample, idx) => (
                 <button
                   key={sample.id}
                   onClick={() => handleLoadSample(idx)}
                   disabled={isProcessing}
-                  className="p-3 rounded-lg bg-white hover:bg-zinc-50 border border-zinc-200 hover:border-zinc-300 text-left transition-colors flex items-center justify-between gap-3 shadow-2xs group"
+                  className="p-3 rounded-lg text-left transition-all flex items-center justify-between gap-3 group"
+                  style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
                 >
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="text-xs font-semibold text-zinc-900 group-hover:text-blue-600 truncate transition-colors">
-                      {sample.title}
-                    </div>
-                    <div className="text-[11px] text-zinc-500 truncate">{sample.subtitle}</div>
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{sample.title}</div>
+                    <div className="text-[12px] truncate" style={{ color: 'var(--text-tertiary)' }}>{sample.subtitle}</div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 text-[10px] font-mono shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <span
+                    className="px-2.5 py-1 rounded-md text-[12px] font-medium shrink-0 transition-colors"
+                    style={{ background: 'var(--surface-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                  >
                     Test →
                   </span>
                 </button>

@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Coffee, 
-  Clock, 
-  CheckCircle2, 
-  BookOpen, 
-  Zap, 
-  Smile, 
-  Plus, 
+import {
+  Coffee,
+  Clock,
+  CheckCircle2,
+  BookOpen,
+  Zap,
+  Smile,
+  Plus,
   Trash2,
   Sparkles,
-  Calendar
 } from 'lucide-react';
 import { VacantPeriod, DAYS_OF_WEEK } from '../../types/schedule';
 import { format12Hour } from '../../hooks/useVacantPeriods';
@@ -39,42 +38,18 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
   const getSuggestedActivities = (durationMins: number) => {
     if (durationMins <= 45) {
       return [
-        {
-          title: 'Rapid Concept Review',
-          desc: 'Review definitions, formulas, or flashcards before your next lecture.',
-          icon: Zap,
-        },
-        {
-          title: 'Hydrate & Campus Walk',
-          desc: 'Take a brisk walk across campus to recharge mental focus.',
-          icon: Coffee,
-        },
+        { title: 'Quick Review', desc: 'Review definitions, formulas, or flashcards before your next class.', icon: Zap },
+        { title: 'Recharge Walk', desc: 'Take a brisk walk across campus to refresh your focus.', icon: Coffee },
       ];
     } else if (durationMins <= 120) {
       return [
-        {
-          title: 'Deep Focus Sprint',
-          desc: 'Complete two uninterrupted 25m Pomodoro sessions on project code.',
-          icon: BookOpen,
-        },
-        {
-          title: 'Meal & Cognitive Rest',
-          desc: 'Grab lunch and step away from screens to refresh bandwidth.',
-          icon: Smile,
-        },
+        { title: 'Deep Focus Sprint', desc: 'Complete two 25-minute Pomodoro sessions on your current project.', icon: BookOpen },
+        { title: 'Meal & Rest', desc: 'Grab lunch and step away from screens to recharge.', icon: Smile },
       ];
     } else {
       return [
-        {
-          title: 'Major Assignment Milestone',
-          desc: 'Work through programming lab exercises in the university library.',
-          icon: Sparkles,
-        },
-        {
-          title: 'Peer Sync & Group Study',
-          desc: 'Review capstone deliverables or discuss lecture problem sets.',
-          icon: CheckCircle2,
-        },
+        { title: 'Assignment Work', desc: 'Work through lab exercises or major project milestones.', icon: Sparkles },
+        { title: 'Group Study', desc: 'Review deliverables or discuss problem sets with classmates.', icon: CheckCircle2 },
       ];
     }
   };
@@ -84,18 +59,11 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeBreak || !newTaskInput.trim()) return;
-
     const breakId = activeBreak.id;
     const currentList = customTasks[breakId] || [];
-    const newTask: CustomTask = {
-      id: Date.now().toString(),
-      text: newTaskInput.trim(),
-      done: false,
-    };
-
     setCustomTasks({
       ...customTasks,
-      [breakId]: [...currentList, newTask],
+      [breakId]: [...currentList, { id: Date.now().toString(), text: newTaskInput.trim(), done: false }],
     });
     setNewTaskInput('');
   };
@@ -117,86 +85,96 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
   };
 
   const activeTasks = activeBreak ? customTasks[activeBreak.id] || [] : [];
-  const totalBreaksHours = Math.round(
-    vacantPeriods.reduce((acc, v) => acc + v.durationMinutes, 0) / 60
-  );
+  const totalBreaksHours = Math.round(vacantPeriods.reduce((acc, v) => acc + v.durationMinutes, 0) / 60);
 
   return (
-    <div className="space-y-3 max-w-5xl mx-auto select-none animate-fade-in">
-      {/* 1. Header Banner with Stats */}
-      <div className="p-3.5 rounded-xl bg-white border border-zinc-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+    <div className="space-y-4 max-w-5xl mx-auto select-none animate-fade-in">
+      {/* Page header */}
+      <div
+        className="p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-xs text-zinc-950 uppercase tracking-wider font-mono">
-              Vacant Break & Focus Planner
-            </h2>
-            <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
-              {vacantPeriods.length} Breaks Detected
+          <h2 className="font-semibold text-[16px]" style={{ color: 'var(--text-primary)' }}>
+            Study Planner
+          </h2>
+          <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            Turn free periods into productive study sessions.
+            <span
+              className="inline-flex items-center ml-2 px-2 py-0.5 rounded-md text-[12px] font-medium"
+              style={{ background: 'var(--status-warning-bg)', color: '#92400e', border: '1px solid var(--status-warning-border)' }}
+            >
+              {vacantPeriods.length} free periods detected
             </span>
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-0.5">
-            Transform free timetable intervals into structured study sessions with Pomodoro timeboxing.
           </p>
         </div>
-
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <div className="text-right">
-            <span className="text-[10px] text-zinc-400 block leading-none">Weekly Free Time</span>
-            <span className="font-semibold text-zinc-900 text-xs">{totalBreaksHours} Total Hours</span>
+        <div className="text-right">
+          <div className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>Weekly free time</div>
+          <div className="font-semibold text-[15px] tabular-nums" style={{ color: 'var(--text-primary)' }}>
+            {totalBreaksHours} hours
           </div>
         </div>
       </div>
 
       {vacantPeriods.length === 0 ? (
-        <div className="p-8 text-center rounded-xl bg-white border border-zinc-200 shadow-2xs space-y-1">
-          <p className="text-xs font-medium text-zinc-800">No vacant breaks detected in your current schedule.</p>
-          <p className="text-[11px] font-mono text-zinc-400">Add classes with time gaps to enable the study planner.</p>
+        <div
+          className="p-10 text-center rounded-lg"
+          style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)' }}
+        >
+          <Coffee className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+          <p className="text-[14px] font-medium" style={{ color: 'var(--text-secondary)' }}>No free periods detected</p>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--text-tertiary)' }}>Add classes with time gaps to enable the study planner.</p>
         </div>
       ) : (
         <>
-          {/* 2. Sleek Horizontal Break Slot Selector Bar */}
-          <div className="p-2 rounded-xl bg-white border border-zinc-200 shadow-2xs space-y-1.5">
+          {/* Break slot selector */}
+          <div
+            className="p-3 rounded-lg space-y-2"
+            style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+          >
             <div className="flex items-center justify-between px-1">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-semibold flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-zinc-400" /> Select Break Window
+              <span className="text-[12px] font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                Select a free period
               </span>
               {activeBreak && (
-                <span className="text-[10px] font-mono text-amber-700 font-medium">
-                  Active: {activeBreak.day} ({format12Hour(activeBreak.startTime)} – {format12Hour(activeBreak.endTime)})
+                <span className="text-[12px]" style={{ color: 'var(--status-warning)' }}>
+                  {activeBreak.day} · {format12Hour(activeBreak.startTime)} – {format12Hour(activeBreak.endTime)}
                 </span>
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {vacantPeriods.map((v) => {
                 const isSelected = activeBreak?.id === v.id;
                 const dayFull = DAYS_OF_WEEK.find((d) => d.key === v.day)?.short || v.day;
-
                 return (
                   <button
                     key={v.id}
                     onClick={() => setActiveBreak(v)}
-                    className={`p-2 rounded-lg border text-left transition-all flex items-center justify-between gap-1.5 ${
-                      isSelected
-                        ? 'bg-blue-50/80 border-blue-500 shadow-2xs ring-1 ring-blue-500/30'
-                        : 'bg-zinc-50/80 hover:bg-zinc-100/70 border-zinc-200 text-zinc-700'
-                    }`}
+                    className="p-2.5 rounded-lg text-left transition-all flex items-center justify-between gap-1.5"
+                    style={{
+                      background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                      border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                    }}
                   >
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1">
-                        <span className={`font-bold text-xs ${isSelected ? 'text-blue-900' : 'text-zinc-900'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-[13px]" style={{ color: isSelected ? 'var(--brand-800)' : 'var(--text-primary)' }}>
                           {dayFull}
                         </span>
-                        <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-100/80 text-amber-900 border border-amber-200/80">
+                        <span
+                          className="text-[11px] font-medium px-1.5 py-0.5 rounded-md"
+                          style={{ background: 'var(--status-warning-bg)', color: '#92400e', border: '1px solid var(--status-warning-border)' }}
+                        >
                           {v.durationFormatted}
                         </span>
                       </div>
-                      <div className="text-[10px] font-mono text-zinc-500 truncate mt-0.5">
+                      <div className="text-[11px] mt-0.5 tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
                         {format12Hour(v.startTime)} – {format12Hour(v.endTime)}
                       </div>
                     </div>
                     {isSelected && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--brand-600)' }} />
                     )}
                   </button>
                 );
@@ -204,67 +182,73 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
             </div>
           </div>
 
-          {/* 3. Balanced Dual-Column Workspace (Timer Left + Tasks & Recommendations Right) */}
+          {/* Timer + Tasks workspace */}
           {activeBreak && (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
-              {/* Left Column: Focus Timer (5 Cols) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              {/* Timer */}
               <div className="md:col-span-5 flex flex-col">
                 <FocusTimer
                   initialMinutes={Math.min(activeBreak.durationMinutes, 25)}
-                  subjectContext={`${activeBreak.day} Break (${activeBreak.durationFormatted})`}
+                  subjectContext={`${activeBreak.day} (${activeBreak.durationFormatted})`}
                 />
               </div>
 
-              {/* Right Column: Tasks & Recommendations (7 Cols) */}
-              <div className="md:col-span-7 flex flex-col justify-between space-y-3">
-                {/* Break Checklist */}
-                <div className="p-3.5 rounded-xl bg-white border border-zinc-200 shadow-2xs flex-1 flex flex-col justify-between">
+              {/* Tasks + Suggestions */}
+              <div className="md:col-span-7 flex flex-col justify-between space-y-4">
+                {/* Checklist */}
+                <div
+                  className="p-4 rounded-lg flex-1 flex flex-col justify-between"
+                  style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+                >
                   <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-zinc-100 mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                        <h4 className="font-semibold text-xs text-zinc-900">
+                    <div className="flex items-center justify-between pb-2 mb-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--brand-600)' }} />
+                        <h4 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
                           Session Checklist
                         </h4>
                       </div>
-                      <span className="text-[10px] font-mono text-zinc-400">
-                        {activeTasks.filter((t) => t.done).length}/{activeTasks.length} Completed
+                      <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+                        {activeTasks.filter((t) => t.done).length}/{activeTasks.length}
                       </span>
                     </div>
 
-                    {/* Task List */}
-                    <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
                       {activeTasks.length === 0 ? (
-                        <p className="text-[11px] text-zinc-400 font-mono py-2 text-center">
-                          No tasks added yet for this break session.
+                        <p className="text-[13px] py-3 text-center" style={{ color: 'var(--text-muted)' }}>
+                          No tasks yet. Add one below.
                         </p>
                       ) : (
                         activeTasks.map((t) => (
                           <div
                             key={t.id}
-                            className="flex items-center justify-between p-1.5 rounded-md bg-zinc-50 border border-zinc-150 text-xs group"
+                            className="flex items-center justify-between p-2 rounded-lg text-[13px] group"
+                            style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
                           >
-                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                            <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
                               <input
                                 type="checkbox"
                                 checked={t.done}
                                 onChange={() => toggleTask(activeBreak.id, t.id)}
-                                className="w-3.5 h-3.5 rounded text-blue-600 border-zinc-300 cursor-pointer focus:ring-0"
+                                className="w-4 h-4 rounded cursor-pointer accent-[var(--brand-600)]"
                               />
                               <span
-                                className={`text-[11px] truncate ${
-                                  t.done ? 'line-through text-zinc-400' : 'text-zinc-800'
-                                }`}
+                                className="truncate"
+                                style={{
+                                  color: t.done ? 'var(--text-muted)' : 'var(--text-primary)',
+                                  textDecoration: t.done ? 'line-through' : 'none',
+                                }}
                               >
                                 {t.text}
                               </span>
                             </label>
                             <button
                               onClick={() => deleteTask(activeBreak.id, t.id)}
-                              className="text-zinc-400 hover:text-rose-600 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="p-1 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-red-50"
                               title="Delete task"
+                              style={{ color: 'var(--text-muted)' }}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))
@@ -272,43 +256,48 @@ export const VacantBreakPlanner: React.FC<VacantBreakPlannerProps> = ({
                     </div>
                   </div>
 
-                  {/* Add Task Input */}
-                  <form onSubmit={handleAddTask} className="flex gap-1.5 pt-2 border-t border-zinc-100 mt-2">
+                  <form onSubmit={handleAddTask} className="flex gap-2 pt-3 mt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                     <input
                       type="text"
                       value={newTaskInput}
                       onChange={(e) => setNewTaskInput(e.target.value)}
-                      placeholder="Add focus objective (e.g. Read Chapter 4)..."
-                      className="flex-1 bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md px-2.5 py-1 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none"
+                      placeholder="Add a study objective..."
+                      className="flex-1 text-[13px] px-3 py-2 rounded-lg focus:outline-none"
+                      style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
                     />
                     <button
                       type="submit"
-                      className="px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium transition-colors flex items-center gap-1"
+                      className="px-3 py-2 rounded-lg text-white text-[13px] font-medium transition-colors flex items-center gap-1"
+                      style={{ background: 'var(--text-primary)', boxShadow: 'var(--shadow-xs)' }}
                     >
-                      <Plus className="w-3 h-3" />
-                      <span>Add</span>
+                      <Plus className="w-4 h-4" />
+                      Add
                     </button>
                   </form>
                 </div>
 
-                {/* Smart Suggested Activities */}
-                <div className="p-3 rounded-xl bg-white border border-zinc-200 shadow-2xs space-y-1.5">
-                  <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-semibold">
-                    Recommended for {activeBreak.durationFormatted} Window
+                {/* Suggestions */}
+                <div
+                  className="p-3 rounded-lg space-y-2"
+                  style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+                >
+                  <div className="text-[12px] font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                    Suggested for {activeBreak.durationFormatted}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {currentSuggestions.map((sug, idx) => {
                       const Icon = sug.icon;
                       return (
                         <div
                           key={idx}
-                          className="p-2 rounded-lg bg-zinc-50/80 border border-zinc-200/80 space-y-0.5"
+                          className="p-3 rounded-lg space-y-1"
+                          style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
                         >
-                          <div className="flex items-center gap-1.5">
-                            <Icon className="w-3 h-3 text-amber-600 shrink-0" />
-                            <h4 className="font-semibold text-[11px] text-zinc-900">{sug.title}</h4>
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--status-warning)' }} />
+                            <h4 className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>{sug.title}</h4>
                           </div>
-                          <p className="text-[10px] text-zinc-500 leading-tight">{sug.desc}</p>
+                          <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{sug.desc}</p>
                         </div>
                       );
                     })}

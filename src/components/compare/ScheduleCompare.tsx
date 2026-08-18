@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Share2, 
-  Check, 
-  Coffee, 
+import {
+  Share2,
+  Check,
+  Coffee,
   Users2,
   Calendar,
   Clock,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
 import { ScheduleSet, FriendSchedule, OverlapFreeSlot, DAYS_OF_WEEK } from '../../types/schedule';
 import { storageService } from '../../services/storageService';
@@ -23,49 +23,30 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({ userSchedule }
 
   const activeFriend = friends.find((f) => f.id === selectedFriendId);
 
-  // Compute common free time between user and selected friend
   const commonFreeSlots = useMemo<OverlapFreeSlot[]>(() => {
     if (!activeFriend) return [];
-
     const results: OverlapFreeSlot[] = [];
-
     DAYS_OF_WEEK.forEach((dayInfo) => {
       const dayKey = dayInfo.key;
       const userDayClasses = userSchedule.items.filter((c) => c.days.includes(dayKey));
       const friendDayClasses = activeFriend.schedule.items.filter((c) => c.days.includes(dayKey));
-
       const slotStep = 30;
       let currentFreeStart: number | null = null;
-
       for (let min = 7 * 60; min <= 21 * 60; min += slotStep) {
-        const isUserBusy = userDayClasses.some(
-          (c) => min >= timeToMinutes(c.startTime) && min < timeToMinutes(c.endTime)
-        );
-        const isFriendBusy = friendDayClasses.some(
-          (c) => min >= timeToMinutes(c.startTime) && min < timeToMinutes(c.endTime)
-        );
-
-        const isBothFree = !isUserBusy && !isFriendBusy;
-
-        if (isBothFree) {
-          if (currentFreeStart === null) {
-            currentFreeStart = min;
-          }
+        const isUserBusy = userDayClasses.some((c) => min >= timeToMinutes(c.startTime) && min < timeToMinutes(c.endTime));
+        const isFriendBusy = friendDayClasses.some((c) => min >= timeToMinutes(c.startTime) && min < timeToMinutes(c.endTime));
+        if (!isUserBusy && !isFriendBusy) {
+          if (currentFreeStart === null) currentFreeStart = min;
         } else {
           if (currentFreeStart !== null) {
             const duration = min - currentFreeStart;
             if (duration >= 60) {
-              const startH = Math.floor(currentFreeStart / 60);
-              const startM = currentFreeStart % 60;
-              const endH = Math.floor(min / 60);
-              const endM = min % 60;
-
               results.push({
                 id: `overlap-${dayKey}-${currentFreeStart}`,
                 day: dayKey,
                 dayFull: dayInfo.full,
-                startTime: `${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}`,
-                endTime: `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`,
+                startTime: `${Math.floor(currentFreeStart / 60).toString().padStart(2, '0')}:${(currentFreeStart % 60).toString().padStart(2, '0')}`,
+                endTime: `${Math.floor(min / 60).toString().padStart(2, '0')}:${(min % 60).toString().padStart(2, '0')}`,
                 durationFormatted: formatDuration(duration),
                 participants: [userSchedule.studentName || 'You', activeFriend.name],
               });
@@ -75,17 +56,10 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({ userSchedule }
         }
       }
     });
-
     return results;
   }, [userSchedule, activeFriend]);
 
-  const totalSharedHours = Math.round(
-    commonFreeSlots.reduce((acc, slot) => {
-      const start = timeToMinutes(slot.startTime);
-      const end = timeToMinutes(slot.endTime);
-      return acc + (end - start);
-    }, 0) / 60
-  );
+  const totalSharedHours = Math.round(commonFreeSlots.reduce((acc, slot) => acc + (timeToMinutes(slot.endTime) - timeToMinutes(slot.startTime)), 0) / 60);
 
   const handleCopyShareLink = () => {
     const fakeLink = `https://snapsched.app/share/${userSchedule.id || '2026-sem1'}`;
@@ -95,42 +69,42 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({ userSchedule }
   };
 
   return (
-    <div className="space-y-3 max-w-5xl mx-auto select-none animate-fade-in">
-      {/* 1. Header Banner */}
-      <div className="p-3.5 rounded-xl bg-white border border-zinc-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+    <div className="space-y-4 max-w-5xl mx-auto select-none animate-fade-in">
+      {/* Header */}
+      <div
+        className="p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-xs text-zinc-950 uppercase tracking-wider font-mono">
-              Schedule Comparison & Free Time Matcher
-            </h2>
-            <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
-              Sync Engine
-            </span>
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-0.5">
-            Compare timetables with classmates to discover common vacant periods for collaborative study sessions.
+          <h2 className="font-semibold text-[16px]" style={{ color: 'var(--text-primary)' }}>
+            Schedule Comparison
+          </h2>
+          <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            Compare timetables with classmates to find common free time.
           </p>
         </div>
-
-        {/* Share Action */}
         <button
           onClick={handleCopyShareLink}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-medium border border-zinc-200 transition-colors shadow-2xs"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors"
+          style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-default)', background: 'var(--surface-primary)' }}
         >
-          {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5 text-zinc-600" />}
-          <span>{copiedLink ? 'Link Copied!' : 'Share Timetable'}</span>
+          {copiedLink ? <Check className="w-4 h-4" style={{ color: 'var(--status-success)' }} /> : <Share2 className="w-4 h-4" />}
+          {copiedLink ? 'Link Copied!' : 'Share Timetable'}
         </button>
       </div>
 
-      {/* 2. Horizontal Classmate Switcher Strip */}
-      <div className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-2xs space-y-2">
+      {/* Classmate selector */}
+      <div
+        className="p-3 rounded-lg space-y-2"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
         <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-semibold flex items-center gap-1">
-            <Users2 className="w-3 h-3 text-zinc-400" /> Select Classmate to Compare
+          <span className="text-[12px] font-medium flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+            <Users2 className="w-3.5 h-3.5" /> Select classmate
           </span>
           {activeFriend && (
-            <span className="text-[10px] font-mono text-zinc-500">
-              Comparing: <strong className="text-zinc-900">{activeFriend.name}</strong> ({activeFriend.course})
+            <span className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+              Comparing: <strong style={{ color: 'var(--text-primary)' }}>{activeFriend.name}</strong> ({activeFriend.course})
             </span>
           )}
         </div>
@@ -142,29 +116,25 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({ userSchedule }
               <button
                 key={f.id}
                 onClick={() => setSelectedFriendId(f.id)}
-                className={`p-2.5 rounded-lg border text-left transition-all flex items-center justify-between gap-2 ${
-                  isSelected
-                    ? 'bg-blue-50/80 border-blue-500 shadow-2xs ring-1 ring-blue-500/30'
-                    : 'bg-zinc-50/80 hover:bg-zinc-100/70 border-zinc-200 text-zinc-700'
-                }`}
+                className="p-3 rounded-lg text-left transition-all flex items-center justify-between gap-2"
+                style={{
+                  background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                  border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                }}
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className={`font-bold text-xs ${isSelected ? 'text-blue-900' : 'text-zinc-900'}`}>
+                    <span className="font-semibold text-[13px]" style={{ color: isSelected ? 'var(--brand-800)' : 'var(--text-primary)' }}>
                       {f.name}
                     </span>
-                    <span className="text-[9px] font-mono text-zinc-400">
-                      {f.course}
-                    </span>
+                    <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{f.course}</span>
                   </div>
-                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
-                    {f.schedule.items.length} classes enrolled
+                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    {f.schedule.items.length} classes
                   </div>
                 </div>
-                {isSelected ? (
-                  <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 ring-2 ring-blue-200"></span>
-                ) : (
-                  <span className="text-[10px] font-mono text-zinc-400">Select</span>
+                {isSelected && (
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--brand-600)' }} />
                 )}
               </button>
             );
@@ -172,49 +142,64 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({ userSchedule }
         </div>
       </div>
 
-      {/* 3. Common Free Slots Grid */}
-      <div className="p-3.5 rounded-xl bg-white border border-zinc-200 shadow-2xs space-y-2.5">
-        <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+      {/* Free slots */}
+      <div
+        className="p-4 rounded-lg space-y-3"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
+        <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center gap-2">
-            <Coffee className="w-3.5 h-3.5 text-amber-600" />
-            <h3 className="font-semibold text-xs text-zinc-900">
-              Mutual Free Windows ({commonFreeSlots.length} Slots Available)
+            <Coffee className="w-4 h-4" style={{ color: 'var(--status-warning)' }} />
+            <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
+              Shared Free Time ({commonFreeSlots.length} windows)
             </h3>
           </div>
-          <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-medium">
-            {totalSharedHours} Total Shared Hours
+          <span
+            className="text-[12px] font-medium px-2.5 py-1 rounded-md"
+            style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+          >
+            {totalSharedHours} hours total
           </span>
         </div>
 
         {commonFreeSlots.length === 0 ? (
-          <div className="py-8 text-center text-xs text-zinc-400 font-mono">
-            No overlapping 60+ minute free periods detected with {activeFriend?.name}.
+          <div className="py-10 text-center" style={{ color: 'var(--text-tertiary)' }}>
+            <Users2 className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+            <p className="text-[14px] font-medium" style={{ color: 'var(--text-secondary)' }}>No overlapping free time found</p>
+            <p className="text-[13px] mt-1">No 60+ minute shared free periods with {activeFriend?.name}.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {commonFreeSlots.map((slot) => (
               <div
                 key={slot.id}
-                className="p-2.5 rounded-lg bg-zinc-50/80 hover:bg-zinc-100/80 border border-zinc-200 transition-colors flex flex-col justify-between gap-2 group"
+                className="p-3 rounded-lg flex flex-col justify-between gap-2 group transition-all"
+                style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3 text-zinc-400" />
-                    <span className="font-bold text-xs text-zinc-900 font-mono">{slot.dayFull}</span>
+                    <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                    <span className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>{slot.dayFull}</span>
                   </div>
-                  <span className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-200">
-                    {slot.durationFormatted} Free
+                  <span
+                    className="text-[11px] font-medium px-1.5 py-0.5 rounded-md"
+                    style={{ background: 'var(--status-warning-bg)', color: '#92400e', border: '1px solid var(--status-warning-border)' }}
+                  >
+                    {slot.durationFormatted}
                   </span>
                 </div>
-
-                <div className="flex items-center justify-between text-[11px] font-mono text-zinc-600 pt-1 border-t border-zinc-200/60">
-                  <div className="flex items-center gap-1 text-zinc-700">
-                    <Clock className="w-2.5 h-2.5 text-zinc-400" />
-                    <span>{format12Hour(slot.startTime)} – {format12Hour(slot.endTime)}</span>
+                <div className="flex items-center justify-between text-[12px] pt-1.5" style={{ borderTop: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                  <div className="flex items-center gap-1 tabular-nums">
+                    <Clock className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                    {format12Hour(slot.startTime)} – {format12Hour(slot.endTime)}
                   </div>
-                  <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                    <span>Study</span>
-                    <ArrowRight className="w-2.5 h-2.5" />
+                  <span
+                    className="font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform"
+                    style={{ color: 'var(--brand-600)' }}
+                  >
+                    Study <ArrowRight className="w-3 h-3" />
                   </span>
                 </div>
               </div>

@@ -5,8 +5,8 @@ import { format12Hour } from '../../hooks/useVacantPeriods';
 
 interface ClassCardProps {
   item: ClassItem;
-  topOffset: number;       // In pixels
-  height: number;          // In pixels
+  topOffset: number;
+  height: number;
   onEdit: (item: ClassItem) => void;
   onDelete: (id: string) => void;
 }
@@ -18,53 +18,72 @@ export const ClassCard: React.FC<ClassCardProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const isSmall = height < 50;
+  const isCompact = height < 48;
+  const showInstructor = height >= 72;
 
   return (
     <div
       style={{
         top: `${topOffset}px`,
         height: `${Math.max(height - 2, 28)}px`,
+        background: 'var(--surface-primary)',
+        border: '1px solid var(--border-default)',
+        borderLeftWidth: '2px',
+        borderLeftColor: item.color || '#4f46e5',
+        boxShadow: 'var(--shadow-xs)',
+        borderRadius: 'var(--radius-md)',
       }}
-      className="absolute left-1 right-1 rounded-md p-1.5 flex flex-col justify-between transition-all duration-150 group border border-zinc-200/90 bg-white hover:border-zinc-300 cursor-pointer hover:z-30 hover:shadow-md select-none overflow-hidden hover:overflow-visible"
+      className="absolute left-1 right-1 p-1.5 flex flex-col justify-between transition-all group cursor-pointer select-none overflow-hidden hover:overflow-visible"
       onClick={() => onEdit(item)}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'var(--surface-secondary)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+        e.currentTarget.style.zIndex = '30';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'var(--surface-primary)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+        e.currentTarget.style.zIndex = '';
+      }}
     >
-      {/* 3px Solid Left Color Stripe */}
-      <div 
-        className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" 
-        style={{ backgroundColor: item.color || '#2563eb' }} 
+      {/* Subtle tint on hover */}
+      <div
+        className="absolute inset-0 opacity-0 group-hover:opacity-[0.04] transition-opacity pointer-events-none rounded-md"
+        style={{ backgroundColor: item.color || '#4f46e5' }}
       />
 
-      {/* Subtle Background Color Tint */}
-      <div 
-        className="absolute inset-0 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity pointer-events-none"
-        style={{ backgroundColor: item.color || '#2563eb' }}
-      />
-
-      {/* Top Header: Code + Room + Action Buttons */}
-      <div className="relative z-10 flex items-center justify-between gap-1 pl-1">
-        <div className="flex items-center gap-1 min-w-0">
-          <span className="text-[11px] font-bold text-zinc-950 font-mono tracking-tight shrink-0">
+      {/* Top: Code + Room + Actions */}
+      <div className="relative z-10 flex items-center justify-between gap-1 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[11px] font-semibold tracking-tight shrink-0" style={{ color: 'var(--text-primary)' }}>
             {item.code}
           </span>
           {item.room && (
-            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-zinc-100 text-zinc-700 border border-zinc-200 truncate">
+            <span
+              className="text-[10px] px-1 py-0.5 rounded shrink-0"
+              style={{
+                background: 'var(--surface-secondary)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
               {item.room}
             </span>
           )}
         </div>
 
-        {/* Quick Edit / Delete buttons on hover */}
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity bg-white/95 rounded p-0.5 border border-zinc-200 shadow-2xs">
+        {/* Edit/Delete on hover */}
+        <div
+          className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity rounded-md p-0.5"
+          style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+        >
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(item);
-            }}
+            onClick={(e) => { e.stopPropagation(); onEdit(item); }}
             title="Edit Class"
-            className="p-0.5 hover:text-zinc-900 text-zinc-500 hover:bg-zinc-100 rounded transition-colors"
+            className="p-0.5 rounded transition-colors hover:bg-gray-100"
+            style={{ color: 'var(--text-muted)' }}
           >
-            <Edit2 className="w-2.5 h-2.5" />
+            <Edit2 className="w-3 h-3" />
           </button>
           <button
             onClick={(e) => {
@@ -74,55 +93,81 @@ export const ClassCard: React.FC<ClassCardProps> = ({
               }
             }}
             title="Delete Class"
-            className="p-0.5 hover:text-rose-600 text-zinc-500 hover:bg-zinc-100 rounded transition-colors"
+            className="p-0.5 rounded transition-colors hover:bg-red-50"
+            style={{ color: 'var(--text-muted)' }}
           >
-            <Trash2 className="w-2.5 h-2.5" />
+            <Trash2 className="w-3 h-3" />
           </button>
         </div>
       </div>
 
-      {/* Middle: Full Subject Name (Multi-line wrapped) */}
-      {!isSmall && (
-        <div className="relative z-10 my-0.5 pl-1 space-y-0.5">
-          <h4 className="font-medium text-[10px] text-zinc-800 leading-snug line-clamp-2">
+      {/* Middle: Subject name */}
+      {!isCompact && (
+        <div className="relative z-10 my-0.5 space-y-0.5">
+          <h4 className="font-medium text-[10px] leading-snug line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
             {item.name}
           </h4>
-          {item.instructor && height >= 75 && (
-            <p className="text-[9px] text-zinc-500 flex items-center gap-0.5 truncate font-normal">
-              <User className="w-2 h-2 text-zinc-400 shrink-0" />
+          {item.instructor && showInstructor && (
+            <p className="text-[9px] flex items-center gap-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
+              <User className="w-2 h-2 shrink-0" style={{ color: 'var(--text-muted)' }} />
               <span>{item.instructor}</span>
             </p>
           )}
         </div>
       )}
 
-      {/* Bottom: Time range + Units */}
-      <div className="relative z-10 flex items-center justify-between text-[10px] text-zinc-500 pt-0.5 border-t border-zinc-100/80 font-mono pl-1">
+      {/* Bottom: Time */}
+      <div
+        className="relative z-10 flex items-center justify-between text-[10px] pt-0.5 tabular-nums"
+        style={{ color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-subtle)' }}
+      >
         <div className="flex items-center gap-1 truncate">
-          <Clock className="w-2.5 h-2.5 text-zinc-400 shrink-0" />
+          <Clock className="w-2.5 h-2.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
           <span>{format12Hour(item.startTime)} – {format12Hour(item.endTime)}</span>
         </div>
         {item.units && (
-          <span className="text-[9px] text-zinc-500 font-mono shrink-0">
+          <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>
             {item.units}u
           </span>
         )}
       </div>
 
-      {/* Full Hover Tooltip Popover (Reveals complete details on hover) */}
-      <div className="hidden group-hover:block absolute left-0 right-0 top-full mt-1 p-2 rounded-md bg-white border border-zinc-200 shadow-lg z-40 text-left pointer-events-none animate-fade-in min-w-[180px]">
-        <div className="flex items-center justify-between gap-1 mb-1">
-          <span className="font-bold text-xs text-zinc-950 font-mono">{item.code}</span>
-          <span className="text-[9px] font-mono px-1 rounded bg-zinc-100 text-zinc-700 border border-zinc-200">{item.room}</span>
+      {/* Hover tooltip */}
+      <div
+        className="hidden group-hover:block absolute left-0 right-0 top-full mt-1.5 p-3 rounded-lg pointer-events-none animate-fade-in min-w-[200px]"
+        style={{
+          background: 'var(--surface-primary)',
+          border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-lg)',
+          zIndex: 40,
+        }}
+      >
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>
+            {item.code}
+          </span>
+          {item.room && (
+            <span
+              className="text-[11px] px-1.5 py-0.5 rounded-md"
+              style={{ background: 'var(--surface-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+            >
+              {item.room}
+            </span>
+          )}
         </div>
-        <p className="text-xs font-medium text-zinc-900 leading-tight mb-1">{item.name}</p>
+        <p className="text-[13px] font-medium leading-tight mb-1.5" style={{ color: 'var(--text-primary)' }}>
+          {item.name}
+        </p>
         {item.instructor && (
-          <p className="text-[10px] text-zinc-600 flex items-center gap-1 mb-1">
-            <User className="w-2.5 h-2.5 text-zinc-400" />
+          <p className="text-[12px] flex items-center gap-1.5 mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <User className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
             <span>{item.instructor}</span>
           </p>
         )}
-        <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono pt-1 border-t border-zinc-100">
+        <div
+          className="flex items-center justify-between text-[12px] pt-1.5 tabular-nums"
+          style={{ color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)' }}
+        >
           <span>{format12Hour(item.startTime)} – {format12Hour(item.endTime)}</span>
           {item.units && <span>{item.units} Units</span>}
         </div>

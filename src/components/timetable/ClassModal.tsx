@@ -29,6 +29,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
   const [color, setColor] = useState(COLOR_PALETTES[0]);
   const [units, setUnits] = useState(3);
   const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (initialData) {
@@ -56,6 +57,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
       setUnits(3);
       setNotes('');
     }
+    setErrors({});
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -70,12 +72,18 @@ export const ClassModal: React.FC<ClassModalProps> = ({
     }
   };
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!code.trim()) newErrors.code = 'Subject code is required';
+    if (!name.trim()) newErrors.name = 'Subject name is required';
+    if (!room.trim()) newErrors.room = 'Room is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || !name.trim() || !room.trim()) {
-      alert('Please fill in Subject Code, Name, and Room.');
-      return;
-    }
+    if (!validate()) return;
 
     const payload = {
       code: code.trim(),
@@ -99,47 +107,83 @@ export const ClassModal: React.FC<ClassModalProps> = ({
     onClose();
   };
 
+  const inputClasses = "w-full text-[13px] pl-3 pr-3 py-2 rounded-lg focus:outline-none transition-colors";
+  const inputStyle = {
+    background: 'var(--surface-secondary)',
+    border: '1px solid var(--border-default)',
+    color: 'var(--text-primary)',
+  };
+  const inputFocusStyle = {
+    borderColor: 'var(--brand-500)',
+    background: 'var(--surface-primary)',
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in select-none">
-      <div className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4 animate-overlay-in select-none"
+      style={{ zIndex: 'var(--z-modal)', background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-scale-in"
+        style={{
+          background: 'var(--surface-primary)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-overlay)',
+        }}
+      >
         {/* Header */}
-        <div className="px-5 py-3.5 border-b border-zinc-150 flex items-center justify-between bg-zinc-50/70">
-          <div className="flex items-center gap-2.5">
-            <div 
-              className="w-3.5 h-3.5 rounded-full shadow-2xs" 
-              style={{ backgroundColor: color }} 
+        <div
+          className="px-5 py-4 flex items-center justify-between"
+          style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--surface-secondary)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-4 h-4 rounded-full"
+              style={{ backgroundColor: color, boxShadow: 'var(--shadow-xs)' }}
             />
-            <h3 className="font-semibold text-sm text-zinc-900">
-              {initialData ? 'Edit Class Details' : 'Add New Class'}
+            <h3 className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>
+              {initialData ? 'Edit Class' : 'Add New Class'}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+            style={{ color: 'var(--text-muted)' }}
+            aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 overflow-y-auto">
-          {/* Row 1: Code & Units */}
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
+          {/* Subject Code + Units */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="block text-[11px] font-mono text-zinc-600 mb-1">
-                Subject Code *
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                Subject Code <span style={{ color: 'var(--status-error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="e.g. CS 301"
-                required
-                className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md px-3 py-1.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none transition-colors font-mono"
+                className={inputClasses}
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.code ? 'var(--status-error)' : 'var(--border-default)',
+                }}
+                onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+                onBlur={(e) => Object.assign(e.target.style, inputStyle)}
               />
+              {errors.code && (
+                <p className="text-[11px] mt-1" style={{ color: 'var(--status-error)' }}>{errors.code}</p>
+              )}
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-zinc-600 mb-1">
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Units
               </label>
               <input
@@ -148,67 +192,90 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                 max="9"
                 value={units}
                 onChange={(e) => setUnits(Number(e.target.value))}
-                className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md px-3 py-1.5 text-xs text-zinc-900 focus:outline-none transition-colors font-mono"
+                className={inputClasses}
+                style={inputStyle}
+                onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+                onBlur={(e) => Object.assign(e.target.style, inputStyle)}
               />
             </div>
           </div>
 
-          {/* Row 2: Subject Description Name */}
+          {/* Subject Name */}
           <div>
-            <label className="block text-[11px] font-mono text-zinc-600 mb-1">
-              Subject Name *
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Subject Name <span style={{ color: 'var(--status-error)' }}>*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Distributed Systems & Cloud Architecture"
-              required
-              className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md px-3 py-1.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none transition-colors"
+              className={inputClasses}
+              style={{
+                ...inputStyle,
+                borderColor: errors.name ? 'var(--status-error)' : 'var(--border-default)',
+              }}
+              onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+              onBlur={(e) => Object.assign(e.target.style, inputStyle)}
             />
+            {errors.name && (
+              <p className="text-[11px] mt-1" style={{ color: 'var(--status-error)' }}>{errors.name}</p>
+            )}
           </div>
 
-          {/* Row 3: Room & Instructor */}
+          {/* Room + Instructor */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-mono text-zinc-600 mb-1">
-                Room / Lab *
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                Room / Lab <span style={{ color: 'var(--status-error)' }}>*</span>
               </label>
               <div className="relative">
-                <MapPin className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   value={room}
                   onChange={(e) => setRoom(e.target.value)}
                   placeholder="e.g. LAB-304"
-                  required
-                  className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none transition-colors font-mono"
+                  className={inputClasses}
+                  style={{
+                    ...inputStyle,
+                    paddingLeft: '36px',
+                    borderColor: errors.room ? 'var(--status-error)' : 'var(--border-default)',
+                  }}
+                  onFocus={(e) => Object.assign(e.target.style, { ...inputFocusStyle, paddingLeft: '36px' })}
+                  onBlur={(e) => Object.assign(e.target.style, { ...inputStyle, paddingLeft: '36px' })}
                 />
               </div>
+              {errors.room && (
+                <p className="text-[11px] mt-1" style={{ color: 'var(--status-error)' }}>{errors.room}</p>
+              )}
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-zinc-600 mb-1">
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Instructor
               </label>
               <div className="relative">
-                <User className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   value={instructor}
                   onChange={(e) => setInstructor(e.target.value)}
                   placeholder="e.g. Prof. Vance"
-                  className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none transition-colors"
+                  className={inputClasses}
+                  style={{ ...inputStyle, paddingLeft: '36px' }}
+                  onFocus={(e) => Object.assign(e.target.style, { ...inputFocusStyle, paddingLeft: '36px' })}
+                  onBlur={(e) => Object.assign(e.target.style, { ...inputStyle, paddingLeft: '36px' })}
                 />
               </div>
             </div>
           </div>
 
-          {/* Row 4: Days Checkboxes */}
+          {/* Class Days */}
           <div>
-            <label className="block text-[11px] font-mono text-zinc-600 mb-1">
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Class Days
             </label>
-            <div className="grid grid-cols-6 gap-1">
+            <div className="grid grid-cols-6 gap-1.5">
               {DAYS_OF_WEEK.map((d) => {
                 const isSelected = days.includes(d.key);
                 return (
@@ -216,11 +283,13 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                     key={d.key}
                     type="button"
                     onClick={() => toggleDay(d.key)}
-                    className={`py-1.5 rounded-md text-xs font-mono transition-colors border ${
-                      isSelected
-                        ? 'bg-blue-600 border-blue-600 text-white font-semibold shadow-2xs'
-                        : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
-                    }`}
+                    className="py-2 rounded-lg text-[13px] font-medium transition-colors"
+                    style={{
+                      background: isSelected ? 'var(--brand-600)' : 'var(--surface-secondary)',
+                      color: isSelected ? 'white' : 'var(--text-secondary)',
+                      border: isSelected ? '1px solid var(--brand-600)' : '1px solid var(--border-default)',
+                      fontWeight: isSelected ? 600 : 500,
+                    }}
                   >
                     {d.short}
                   </button>
@@ -229,10 +298,10 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             </div>
           </div>
 
-          {/* Row 5: Start Time & End Time */}
+          {/* Start / End Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-mono text-zinc-600 mb-1">
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Start Time
               </label>
               <input
@@ -240,11 +309,14 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 required
-                className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md px-3 py-1.5 text-xs text-zinc-900 focus:outline-none font-mono"
+                className={inputClasses + ' tabular-nums'}
+                style={inputStyle}
+                onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+                onBlur={(e) => Object.assign(e.target.style, inputStyle)}
               />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-zinc-600 mb-1">
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 End Time
               </label>
               <input
@@ -252,59 +324,73 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 required
-                className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md px-3 py-1.5 text-xs text-zinc-900 focus:outline-none font-mono"
+                className={inputClasses + ' tabular-nums'}
+                style={inputStyle}
+                onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+                onBlur={(e) => Object.assign(e.target.style, inputStyle)}
               />
             </div>
           </div>
 
-          {/* Row 6: Color Badge Picker */}
+          {/* Color Picker */}
           <div>
-            <label className="block text-[11px] font-mono text-zinc-600 mb-1.5">
-              Subject Color Accent
+            <label className="block text-[12px] font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              Color Accent
             </label>
-            <div className="flex items-center gap-2 flex-wrap">
-              {COLOR_PALETTES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  style={{ backgroundColor: c }}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                    color === c ? 'ring-2 ring-blue-500 ring-offset-2 scale-105 shadow-xs' : 'hover:scale-105 opacity-85 hover:opacity-100'
-                  }`}
-                >
-                  {color === c && <Check className="w-3.5 h-3.5 text-white" />}
-                </button>
-              ))}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {COLOR_PALETTES.map((c) => {
+                const isSelected = color === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    style={{
+                      backgroundColor: c,
+                      boxShadow: isSelected ? `0 0 0 2px var(--surface-primary), 0 0 0 4px ${c}` : 'none',
+                      transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+                      opacity: isSelected ? 1 : 0.8,
+                    }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                  >
+                    {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Row 7: Notes */}
+          {/* Notes */}
           <div>
-            <label className="block text-[11px] font-mono text-zinc-600 mb-1">
-              Notes (Optional)
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Notes <span style={{ color: 'var(--text-muted)' }}>(optional)</span>
             </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Lab manual required, midterm in week 8"
-              className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-blue-500 rounded-md px-3 py-1.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none transition-colors"
+              className={inputClasses}
+              style={inputStyle}
+              onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+              onBlur={(e) => Object.assign(e.target.style, inputStyle)}
             />
           </div>
 
-          {/* Submit Action */}
-          <div className="pt-3 border-t border-zinc-150 flex items-center justify-end gap-2">
+          {/* Actions */}
+          <div className="pt-3 flex items-center justify-end gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+              className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-100"
+              style={{ color: 'var(--text-secondary)' }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-md text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors"
+              className="px-5 py-2 rounded-lg text-[13px] font-medium text-white transition-colors hover:opacity-90"
+              style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
             >
               {initialData ? 'Save Changes' : 'Add Class'}
             </button>

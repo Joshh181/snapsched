@@ -1,8 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  ListFilter, 
-  Clock 
+import React, { useState, useMemo, useRef } from 'react';
+import {
+  Calendar as CalendarIcon,
+  ListFilter,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Columns3,
+  CalendarDays,
 } from 'lucide-react';
 import { ClassItem, VacantPeriod, DAYS_OF_WEEK, DayAbbreviation } from '../../types/schedule';
 import { ClassCard } from './ClassCard';
@@ -32,10 +36,45 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'agenda'>('grid');
   const [selectedDayFilter, setSelectedDayFilter] = useState<DayAbbreviation | 'ALL'>('ALL');
   
-  // 40px locked hour scale
-  const hourHeight = 40;
+  // Mobile layout sub-mode: 'single-day' or 'full-week-scroll'
+  const [mobileLayout, setMobileLayout] = useState<'single-day' | 'week-scroll'>('single-day');
 
-  // Dynamically compute earliest and latest hours from classes (bounded between 7 AM and 8 PM)
+  // Mobile single day index
+  const [mobileDayIndex, setMobileDayIndex] = useState(() => {
+    const todayIdx = DAYS_OF_WEEK.findIndex(d => d.key === todayAbbr);
+    return todayIdx >= 0 ? todayIdx : 0;
+  });
+
+  // Touch swipe handling for mobile single day navigation
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+
+    // Only register horizontal swipe if movement is predominantly horizontal and >= 45px
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 45) {
+      if (deltaX < 0) {
+        // Swipe Left -> Next day
+        setMobileDayIndex((prev) => Math.min(DAYS_OF_WEEK.length - 1, prev + 1));
+      } else {
+        // Swipe Right -> Previous day
+        setMobileDayIndex((prev) => Math.max(0, prev - 1));
+      }
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  const hourHeight = 44;
+
   const { startHour, endHour } = useMemo(() => {
     if (classes.length === 0) return { startHour: 7, endHour: 18 };
 
@@ -55,60 +94,102 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     return { startHour: earliest, endHour: Math.max(latest, earliest + 9) };
   }, [classes]);
 
-  // Hours array [startHour, ..., endHour]
   const hours = useMemo(() => {
     return Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
   }, [startHour, endHour]);
 
-  // Compute current time line position
   const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
   const currentLineTop = ((currentMinutes - startHour * 60) / 60) * hourHeight;
   const isCurrentTimeVisible = currentMinutes >= startHour * 60 && currentMinutes <= endHour * 60;
 
-  // Filtered days list
-  const activeDays = selectedDayFilter === 'ALL' 
-    ? DAYS_OF_WEEK 
+  const activeDays = selectedDayFilter === 'ALL'
+    ? DAYS_OF_WEEK
     : DAYS_OF_WEEK.filter(d => d.key === selectedDayFilter);
 
+  const mobileDay = DAYS_OF_WEEK[mobileDayIndex];
+
   return (
-    <div className="space-y-2 select-none">
-      {/* Control Bar: View Switcher + Day Filters (No Scale Buttons) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-1.5 rounded-lg bg-white border border-zinc-200 shadow-2xs">
-        {/* Left: View Mode Toggle */}
-        <div className="flex p-0.5 bg-zinc-100 rounded-md border border-zinc-200">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-              viewMode === 'grid'
-                ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                : 'text-zinc-600 hover:text-zinc-900'
-            }`}
+    <div className="space-y-3 select-none">
+      {/* Control Bar */}
+      <div
+        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2 rounded-lg"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
+        {/* View toggle (Grid / Agenda) */}
+        <div className="flex items-center justify-between gap-2">
+          <div
+            className="flex p-0.5 rounded-md"
+            style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
           >
-            <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
-            <span>Weekly Grid</span>
-          </button>
-          <button
-            onClick={() => setViewMode('agenda')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-              viewMode === 'agenda'
-                ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                : 'text-zinc-600 hover:text-zinc-900'
-            }`}
-          >
-            <ListFilter className="w-3.5 h-3.5 text-blue-600" />
-            <span>Daily Agenda</span>
-          </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors"
+              style={{
+                background: viewMode === 'grid' ? 'var(--surface-primary)' : 'transparent',
+                color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                boxShadow: viewMode === 'grid' ? 'var(--shadow-xs)' : 'none',
+                fontWeight: viewMode === 'grid' ? 600 : 500,
+              }}
+            >
+              <CalendarIcon className="w-4 h-4" style={{ color: viewMode === 'grid' ? 'var(--brand-600)' : 'var(--text-muted)' }} />
+              <span className="hidden sm:inline">Weekly Grid</span>
+              <span className="sm:hidden">Grid</span>
+            </button>
+            <button
+              onClick={() => setViewMode('agenda')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors"
+              style={{
+                background: viewMode === 'agenda' ? 'var(--surface-primary)' : 'transparent',
+                color: viewMode === 'agenda' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                boxShadow: viewMode === 'agenda' ? 'var(--shadow-xs)' : 'none',
+                fontWeight: viewMode === 'agenda' ? 600 : 500,
+              }}
+            >
+              <ListFilter className="w-4 h-4" style={{ color: viewMode === 'agenda' ? 'var(--brand-600)' : 'var(--text-muted)' }} />
+              <span>Agenda</span>
+            </button>
+          </div>
+
+          {/* Mobile view sub-toggle (Single Day vs Scrollable Full Week) */}
+          {viewMode === 'grid' && (
+            <div className="flex sm:hidden p-0.5 rounded-md" style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}>
+              <button
+                onClick={() => setMobileLayout('single-day')}
+                title="Single Day with Swipe"
+                className="p-1.5 rounded-md text-[12px] transition-colors"
+                style={{
+                  background: mobileLayout === 'single-day' ? 'var(--surface-primary)' : 'transparent',
+                  color: mobileLayout === 'single-day' ? 'var(--brand-700)' : 'var(--text-tertiary)',
+                  boxShadow: mobileLayout === 'single-day' ? 'var(--shadow-xs)' : 'none',
+                }}
+              >
+                <CalendarDays className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setMobileLayout('week-scroll')}
+                title="Full Week Scroll"
+                className="p-1.5 rounded-md text-[12px] transition-colors"
+                style={{
+                  background: mobileLayout === 'week-scroll' ? 'var(--surface-primary)' : 'transparent',
+                  color: mobileLayout === 'week-scroll' ? 'var(--brand-700)' : 'var(--text-tertiary)',
+                  boxShadow: mobileLayout === 'week-scroll' ? 'var(--shadow-xs)' : 'none',
+                }}
+              >
+                <Columns3 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Right: Day Filter Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-0.5 sm:pb-0">
+        {/* Day filter tabs for Desktop */}
+        <div className="hidden sm:flex items-center gap-1 overflow-x-auto max-w-full">
           <button
             onClick={() => setSelectedDayFilter('ALL')}
-            className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
-              selectedDayFilter === 'ALL'
-                ? 'bg-zinc-800 text-white font-semibold'
-                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 border border-transparent'
-            }`}
+            className="px-2.5 py-1 rounded-md text-[13px] font-medium transition-colors"
+            style={{
+              background: selectedDayFilter === 'ALL' ? 'var(--text-primary)' : 'transparent',
+              color: selectedDayFilter === 'ALL' ? 'white' : 'var(--text-secondary)',
+            }}
           >
             All
           </button>
@@ -119,166 +200,351 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               <button
                 key={d.key}
                 onClick={() => setSelectedDayFilter(d.key)}
-                className={`px-2 py-0.5 rounded text-xs font-mono transition-colors flex items-center gap-1 ${
-                  isSelected
-                    ? 'bg-zinc-800 text-white font-semibold'
+                className="px-2.5 py-1 rounded-md text-[13px] font-medium transition-colors flex items-center gap-1"
+                style={{
+                  background: isSelected
+                    ? 'var(--text-primary)'
                     : isToday
-                    ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200'
-                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 border border-transparent'
-                }`}
+                      ? 'var(--brand-50)'
+                      : 'transparent',
+                  color: isSelected
+                    ? 'white'
+                    : isToday
+                      ? 'var(--brand-700)'
+                      : 'var(--text-secondary)',
+                  border: isToday && !isSelected ? '1px solid var(--brand-200)' : '1px solid transparent',
+                }}
               >
                 <span>{d.short}</span>
-                {isToday && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
+                {isToday && !isSelected && (
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--brand-600)' }} />
+                )}
               </button>
             );
           })}
         </div>
+
+        {/* Mobile day navigator (Mon - Sat buttons + Swipe indicator) */}
+        {viewMode === 'grid' && mobileLayout === 'single-day' && (
+          <div className="flex sm:hidden items-center gap-1.5 w-full justify-between pt-1 border-t sm:border-t-0" style={{ borderColor: 'var(--border-subtle)' }}>
+            <button
+              onClick={() => setMobileDayIndex(Math.max(0, mobileDayIndex - 1))}
+              disabled={mobileDayIndex === 0}
+              className="p-1.5 rounded-lg transition-colors disabled:opacity-20"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-1 flex-1 justify-around">
+              {DAYS_OF_WEEK.map((d, idx) => {
+                const isToday = d.key === todayAbbr;
+                const isCurrent = idx === mobileDayIndex;
+                const dayClassCount = classes.filter(c => c.days.includes(d.key)).length;
+
+                return (
+                  <button
+                    key={d.key}
+                    onClick={() => setMobileDayIndex(idx)}
+                    className="relative px-2.5 py-1 rounded-lg text-[12px] font-medium flex flex-col items-center justify-center transition-all"
+                    style={{
+                      background: isCurrent ? 'var(--brand-600)' : isToday ? 'var(--brand-50)' : 'transparent',
+                      color: isCurrent ? 'white' : isToday ? 'var(--brand-700)' : 'var(--text-secondary)',
+                      fontWeight: isCurrent || isToday ? 600 : 500,
+                      border: isToday && !isCurrent ? '1px solid var(--brand-200)' : '1px solid transparent',
+                    }}
+                  >
+                    <span>{d.short}</span>
+                    {dayClassCount > 0 && !isCurrent && (
+                      <span className="w-1 h-1 rounded-full mt-0.5" style={{ background: isToday ? 'var(--brand-600)' : 'var(--text-muted)' }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setMobileDayIndex(Math.min(DAYS_OF_WEEK.length - 1, mobileDayIndex + 1))}
+              disabled={mobileDayIndex === DAYS_OF_WEEK.length - 1}
+              className="p-1.5 rounded-lg transition-colors disabled:opacity-20"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-label="Next day"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* VIEW 1: WEEKLY FULL GRID VIEW */}
+      {/* GRID VIEW */}
       {viewMode === 'grid' && (
-        <div className="rounded-lg bg-white border border-zinc-200 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <div className="min-w-[840px] w-full">
-              {/* Header: Days row */}
-              <div className="grid grid-cols-[60px_repeat(6,1fr)] border-b border-zinc-200 bg-zinc-50/90 sticky top-0 z-20">
-                {/* Time Axis corner */}
-                <div className="p-1.5 text-center text-xs font-mono text-zinc-400 border-r border-zinc-200 flex items-center justify-center">
-                  <Clock className="w-3.5 h-3.5 text-zinc-400" />
+        <>
+          {/* Desktop full-week grid OR mobile when 'week-scroll' is selected */}
+          <div
+            className={`${mobileLayout === 'week-scroll' ? 'block' : 'hidden sm:block'} rounded-lg overflow-hidden`}
+            style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}
+          >
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px] w-full">
+                {/* Header row */}
+                <div
+                  className="grid grid-cols-[56px_repeat(6,1fr)] sticky top-0 z-20"
+                  style={{ background: 'var(--surface-secondary)', borderBottom: '1px solid var(--border-default)' }}
+                >
+                  <div
+                    className="p-2 flex items-center justify-center"
+                    style={{ borderRight: '1px solid var(--border-subtle)' }}
+                  >
+                    <Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                  </div>
+
+                  {DAYS_OF_WEEK.map((d) => {
+                    const isToday = d.key === todayAbbr;
+                    const dayClasses = classes.filter((c) => c.days.includes(d.key));
+                    return (
+                      <div
+                        key={d.key}
+                        className="py-2 px-1 text-center"
+                        style={{
+                          borderRight: '1px solid var(--border-subtle)',
+                          background: isToday ? 'var(--brand-50)' : 'transparent',
+                        }}
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span
+                            className="font-semibold text-[13px]"
+                            style={{ color: isToday ? 'var(--brand-800)' : 'var(--text-primary)' }}
+                          >
+                            {d.full}
+                          </span>
+                          {isToday && (
+                            <span
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-white"
+                              style={{ background: 'var(--brand-600)' }}
+                            >
+                              Today
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                          {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Day Columns Headers */}
-                {DAYS_OF_WEEK.map((d) => {
-                  const isToday = d.key === todayAbbr;
-                  const dayClasses = classes.filter((c) => c.days.includes(d.key));
-                  return (
-                    <div
-                      key={d.key}
-                      className={`py-1.5 px-1 text-center border-r border-zinc-200 last:border-r-0 transition-colors ${
-                        isToday ? 'bg-blue-50/70' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span
-                          className={`font-semibold text-xs tracking-tight ${
-                            isToday ? 'text-blue-800' : 'text-zinc-800'
-                          }`}
-                        >
-                          {d.full}
-                        </span>
-                        {isToday && (
-                          <span className="text-[9px] uppercase font-mono font-semibold px-1 rounded bg-blue-600 text-white">
-                            Today
-                          </span>
+                {/* Grid body */}
+                <div
+                  className="relative grid grid-cols-[56px_repeat(6,1fr)]"
+                  style={{ height: `${hours.length * hourHeight}px` }}
+                >
+                  {/* Time axis */}
+                  <div style={{ borderRight: '1px solid var(--border-subtle)', background: 'var(--surface-secondary)' }}>
+                    {hours.map((hour) => (
+                      <div
+                        key={hour}
+                        style={{
+                          height: `${hourHeight}px`,
+                          borderBottom: '1px solid var(--border-subtle)',
+                          color: 'var(--text-muted)',
+                        }}
+                        className="pr-2 pt-1 text-right text-[10px] tabular-nums"
+                      >
+                        {format12Hour(`${hour}:00`)}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Day columns */}
+                  {DAYS_OF_WEEK.map((d) => {
+                    const isToday = d.key === todayAbbr;
+                    const dayClasses = classes.filter((c) => c.days.includes(d.key));
+                    const dayVacant = vacantPeriods.filter((v) => v.day === d.key);
+
+                    return (
+                      <div
+                        key={d.key}
+                        className="relative"
+                        style={{
+                          borderRight: '1px solid var(--border-subtle)',
+                          background: isToday ? 'rgba(79, 70, 229, 0.02)' : 'transparent',
+                        }}
+                      >
+                        {hours.map((hour) => (
+                          <div
+                            key={hour}
+                            style={{ height: `${hourHeight}px`, borderBottom: '1px solid var(--border-subtle)' }}
+                          />
+                        ))}
+
+                        {dayClasses.map((item) => {
+                          const startMin = timeToMinutes(item.startTime);
+                          const endMin = timeToMinutes(item.endTime);
+                          const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
+                          const h = ((endMin - startMin) / 60) * hourHeight;
+                          return (
+                            <ClassCard
+                              key={item.id}
+                              item={item}
+                              topOffset={topOff}
+                              height={h}
+                              onEdit={onEditClass}
+                              onDelete={onDeleteClass}
+                            />
+                          );
+                        })}
+
+                        {dayVacant.map((vacant) => {
+                          const startMin = timeToMinutes(vacant.startTime);
+                          const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
+                          const h = (vacant.durationMinutes / 60) * hourHeight;
+                          return (
+                            <VacantCard
+                              key={vacant.id}
+                              vacant={vacant}
+                              topOffset={topOff}
+                              height={h}
+                              onSelectVacant={onSelectVacant}
+                            />
+                          );
+                        })}
+
+                        {isToday && isCurrentTimeVisible && (
+                          <div
+                            style={{ top: `${currentLineTop}px` }}
+                            className="absolute left-0 right-0 z-30 flex items-center pointer-events-none"
+                          >
+                            <div className="w-2 h-2 rounded-full -ml-1" style={{ background: '#e11d48', boxShadow: '0 0 0 2px #fda4af' }} />
+                            <div className="w-full h-[1.5px]" style={{ background: '#e11d48' }} />
+                          </div>
                         )}
                       </div>
-                      <div className="text-[10px] text-zinc-500 font-mono">
-                        {dayClasses.length} {dayClasses.length === 1 ? 'Class' : 'Classes'}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile single-day grid with touch swipe gestures */}
+          {mobileLayout === 'single-day' && (
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              className="sm:hidden rounded-lg overflow-hidden transition-all"
+              style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}
+            >
+              {/* Mobile day header */}
+              <div className="px-4 py-3" style={{ background: 'var(--surface-secondary)', borderBottom: '1px solid var(--border-default)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>
+                      {mobileDay.full}
+                    </span>
+                    {mobileDay.key === todayAbbr && (
+                      <span
+                        className="text-[11px] font-semibold px-2 py-0.5 rounded-md text-white"
+                        style={{ background: 'var(--brand-600)' }}
+                      >
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+                      {classes.filter(c => c.days.includes(mobileDay.key)).length} classes
+                    </span>
+                    <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-primary)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                      Swipe ⇄
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Body: Time slots grid */}
+              {/* Mobile time grid */}
               <div
-                className="relative grid grid-cols-[60px_repeat(6,1fr)]"
+                className="relative grid grid-cols-[48px_1fr]"
                 style={{ height: `${hours.length * hourHeight}px` }}
               >
-                {/* Left Column: Time Axis Rulers */}
-                <div className="border-r border-zinc-200 bg-zinc-50/40 select-none">
+                {/* Time axis */}
+                <div style={{ borderRight: '1px solid var(--border-subtle)', background: 'var(--surface-secondary)' }}>
                   {hours.map((hour) => (
                     <div
                       key={hour}
-                      style={{ height: `${hourHeight}px` }}
-                      className="border-b border-zinc-200/80 pr-1.5 pt-0.5 text-right text-[10px] font-mono text-zinc-400"
+                      style={{
+                        height: `${hourHeight}px`,
+                        borderBottom: '1px solid var(--border-subtle)',
+                        color: 'var(--text-muted)',
+                      }}
+                      className="pr-1.5 pt-1 text-right text-[10px] tabular-nums"
                     >
                       {format12Hour(`${hour}:00`)}
                     </div>
                   ))}
                 </div>
 
-                {/* Day Columns */}
-                {DAYS_OF_WEEK.map((d) => {
-                  const isToday = d.key === todayAbbr;
-                  const dayClasses = classes.filter((c) => c.days.includes(d.key));
-                  const dayVacant = vacantPeriods.filter((v) => v.day === d.key);
-
-                  return (
+                {/* Single day column */}
+                <div className="relative">
+                  {hours.map((hour) => (
                     <div
-                      key={d.key}
-                      className={`relative border-r border-zinc-200 last:border-r-0 ${
-                        isToday ? 'bg-blue-50/[0.15]' : ''
-                      }`}
+                      key={hour}
+                      style={{ height: `${hourHeight}px`, borderBottom: '1px solid var(--border-subtle)' }}
+                    />
+                  ))}
+
+                  {classes.filter(c => c.days.includes(mobileDay.key)).map((item) => {
+                    const startMin = timeToMinutes(item.startTime);
+                    const endMin = timeToMinutes(item.endTime);
+                    const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
+                    const h = ((endMin - startMin) / 60) * hourHeight;
+                    return (
+                      <ClassCard
+                        key={item.id}
+                        item={item}
+                        topOffset={topOff}
+                        height={h}
+                        onEdit={onEditClass}
+                        onDelete={onDeleteClass}
+                      />
+                    );
+                  })}
+
+                  {vacantPeriods.filter(v => v.day === mobileDay.key).map((vacant) => {
+                    const startMin = timeToMinutes(vacant.startTime);
+                    const topOff = ((startMin - startHour * 60) / 60) * hourHeight;
+                    const h = (vacant.durationMinutes / 60) * hourHeight;
+                    return (
+                      <VacantCard
+                        key={vacant.id}
+                        vacant={vacant}
+                        topOffset={topOff}
+                        height={h}
+                        onSelectVacant={onSelectVacant}
+                      />
+                    );
+                  })}
+
+                  {mobileDay.key === todayAbbr && isCurrentTimeVisible && (
+                    <div
+                      style={{ top: `${currentLineTop}px` }}
+                      className="absolute left-0 right-0 z-30 flex items-center pointer-events-none"
                     >
-                      {/* Hour background grid lines */}
-                      {hours.map((hour) => (
-                        <div
-                          key={hour}
-                          style={{ height: `${hourHeight}px` }}
-                          className="border-b border-zinc-100"
-                        />
-                      ))}
-
-                      {/* Render Class Cards on this day */}
-                      {dayClasses.map((item) => {
-                        const startMin = timeToMinutes(item.startTime);
-                        const endMin = timeToMinutes(item.endTime);
-                        const topOffset = ((startMin - startHour * 60) / 60) * hourHeight;
-                        const durationMins = endMin - startMin;
-                        const height = (durationMins / 60) * hourHeight;
-
-                        return (
-                          <ClassCard
-                            key={item.id}
-                            item={item}
-                            topOffset={topOffset}
-                            height={height}
-                            onEdit={onEditClass}
-                            onDelete={onDeleteClass}
-                          />
-                        );
-                      })}
-
-                      {/* Render Vacant Break Cards on this day */}
-                      {dayVacant.map((vacant) => {
-                        const startMin = timeToMinutes(vacant.startTime);
-                        const topOffset = ((startMin - startHour * 60) / 60) * hourHeight;
-                        const height = (vacant.durationMinutes / 60) * hourHeight;
-
-                        return (
-                          <VacantCard
-                            key={vacant.id}
-                            vacant={vacant}
-                            topOffset={topOffset}
-                            height={height}
-                            onSelectVacant={onSelectVacant}
-                          />
-                        );
-                      })}
-
-                      {/* Real-time laser line (Only on Today column) */}
-                      {isToday && isCurrentTimeVisible && (
-                        <div
-                          style={{ top: `${currentLineTop}px` }}
-                          className="absolute left-0 right-0 z-30 flex items-center pointer-events-none"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500 -ml-0.5 ring-2 ring-rose-300" />
-                          <div className="w-full h-[1.5px] bg-rose-500" />
-                        </div>
-                      )}
+                      <div className="w-2 h-2 rounded-full -ml-1" style={{ background: '#e11d48', boxShadow: '0 0 0 2px #fda4af' }} />
+                      <div className="w-full h-[1.5px]" style={{ background: '#e11d48' }} />
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      {/* VIEW 2: DAILY AGENDA VIEW */}
+      {/* AGENDA VIEW */}
       {viewMode === 'agenda' && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {activeDays.map((d) => {
             const isToday = d.key === todayAbbr;
             const dayClasses = classes
@@ -289,97 +555,123 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
             return (
               <div
                 key={d.key}
-                className={`p-2.5 rounded-lg border transition-colors ${
-                  isToday
-                    ? 'bg-white border-blue-300 shadow-xs'
-                    : 'bg-white border-zinc-200'
-                }`}
+                className="p-3 rounded-lg transition-colors"
+                style={{
+                  background: 'var(--surface-primary)',
+                  border: isToday ? '1px solid var(--brand-200)' : '1px solid var(--border-default)',
+                  boxShadow: isToday ? '0 0 0 1px var(--brand-100)' : 'var(--shadow-xs)',
+                }}
               >
-                {/* Day Header */}
-                <div className="flex items-center justify-between pb-1.5 border-b border-zinc-100 mb-1.5">
+                {/* Day header */}
+                <div className="flex items-center justify-between pb-2 mb-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-xs text-zinc-900">
+                    <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
                       {d.full}
                     </h3>
                     {isToday && (
-                      <span className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">
+                      <span
+                        className="text-[11px] font-semibold px-2 py-0.5 rounded-md text-white"
+                        style={{ background: 'var(--brand-600)' }}
+                      >
                         Today
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] font-mono text-zinc-500">
-                    {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'} •{' '}
-                    {dayVacant.length} {dayVacant.length === 1 ? 'break' : 'breaks'}
+                  <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+                    {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'} · {dayVacant.length} {dayVacant.length === 1 ? 'break' : 'breaks'}
                   </span>
                 </div>
 
-                {/* Day Items List */}
+                {/* Day items */}
                 {dayClasses.length === 0 ? (
-                  <div className="py-3 text-center text-zinc-400 text-xs font-mono">
-                    No classes scheduled for {d.full}.
+                  <div className="py-6 text-center text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
+                    No classes scheduled for {d.full}
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {dayClasses.map((item) => {
                       const breakAfter = dayVacant.find((v) => v.startTime === item.endTime);
 
                       return (
                         <React.Fragment key={item.id}>
-                          {/* Class Row */}
                           <div
                             onClick={() => onEditClass(item)}
-                            className="p-2 rounded-md bg-zinc-50 hover:bg-zinc-100/80 border border-zinc-200 cursor-pointer transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2 group relative overflow-hidden"
+                            className="p-3 rounded-lg cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-2 group relative overflow-hidden"
+                            style={{
+                              background: 'var(--surface-secondary)',
+                              border: '1px solid var(--border-subtle)',
+                              borderLeft: `2px solid ${item.color || '#4f46e5'}`,
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'var(--surface-tertiary)';
+                              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'var(--surface-secondary)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
                           >
-                            <div 
-                              className="absolute left-0 top-0 bottom-0 w-1" 
-                              style={{ backgroundColor: item.color || '#2563eb' }}
-                            />
-
-                            <div className="flex items-center gap-2.5 pl-1">
+                            <div className="flex items-center gap-3">
                               <div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-xs text-zinc-950 font-mono">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>
                                     {item.code}
                                   </span>
                                   {item.room && (
-                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-white text-zinc-700 border border-zinc-200">
+                                    <span
+                                      className="text-[11px] px-1.5 py-0.5 rounded-md"
+                                      style={{ background: 'var(--surface-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                                    >
                                       {item.room}
                                     </span>
                                   )}
                                   {item.units && (
-                                    <span className="text-[9px] font-mono text-zinc-500">
-                                      {item.units}u
+                                    <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                      {item.units} units
                                     </span>
                                   )}
                                 </div>
-                                <h4 className="font-normal text-xs text-zinc-700">
+                                <h4 className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                                   {item.name}
                                 </h4>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-zinc-200 text-xs font-mono text-zinc-600 shadow-2xs">
-                              <Clock className="w-3 h-3 text-zinc-400" />
+                            <div
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] tabular-nums shrink-0"
+                              style={{
+                                background: 'var(--surface-primary)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-secondary)',
+                              }}
+                            >
+                              <Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
                               <span>{format12Hour(item.startTime)} – {format12Hour(item.endTime)}</span>
                             </div>
                           </div>
 
-                          {/* Break Banner */}
+                          {/* Break after */}
                           {breakAfter && (
-                            <div 
+                            <div
                               onClick={() => onSelectVacant?.(breakAfter)}
-                              className="p-1.5 rounded-md border border-dashed border-amber-300 bg-amber-50/60 flex items-center justify-between cursor-pointer hover:bg-amber-100/60 transition-colors text-xs font-mono"
+                              className="p-2.5 rounded-lg flex items-center justify-between cursor-pointer transition-colors text-[13px]"
+                              style={{
+                                background: 'var(--status-warning-bg)',
+                                border: '1px dashed var(--status-warning-border)',
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#fef3c7'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--status-warning-bg)'; }}
                             >
                               <div className="flex items-center gap-2">
-                                <span className="text-amber-800 font-medium">
-                                  ☕ {breakAfter.durationFormatted} Break
+                                <span style={{ color: '#92400e' }} className="font-medium">
+                                  ☕ {breakAfter.durationFormatted} free
                                 </span>
-                                <span className="text-amber-700 text-[11px]">
-                                  ({format12Hour(breakAfter.startTime)} – {format12Hour(breakAfter.endTime)})
+                                <span className="text-[12px]" style={{ color: '#b45309' }}>
+                                  {format12Hour(breakAfter.startTime)} – {format12Hour(breakAfter.endTime)}
                                 </span>
                               </div>
-                              <span className="text-amber-700 hover:text-amber-900 font-semibold text-[10px]">
-                                Plan Focus →
+                              <span className="font-semibold text-[12px]" style={{ color: '#92400e' }}>
+                                Plan →
                               </span>
                             </div>
                           )}
