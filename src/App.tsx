@@ -103,14 +103,6 @@ export function App() {
     setActiveTab('breaks');
   };
 
-  const mobileNavItems = [
-    { id: 'timetable' as ActiveTab, icon: Calendar, label: 'Timetable' },
-    { id: 'scanner' as ActiveTab, icon: ScanLine, label: 'Scanner' },
-    { id: 'breaks' as ActiveTab, icon: Coffee, label: 'Planner' },
-    { id: 'compare' as ActiveTab, icon: Users2, label: 'Compare' },
-    { id: 'settings' as ActiveTab, icon: Settings, label: 'Settings' },
-  ];
-
   return (
     <div
       className="min-h-screen relative overflow-x-hidden"
@@ -145,7 +137,7 @@ export function App() {
           />
 
           {/* Workspace content */}
-          <main className="flex-1 w-full pb-28 lg:pb-6 px-1 md:px-2">
+          <main className="flex-1 w-full pb-6 px-1 md:px-2">
             <div className="animate-fade-in">
               {activeTab === 'timetable' && (
                 <TimetableGrid
@@ -218,34 +210,6 @@ export function App() {
           activeCategory={selectedCategory}
         />
       </div>
-
-      {/* Mobile bottom navigation */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 lg:hidden flex items-center justify-around px-2 py-1.5 border-t border-slate-200/60 bg-white/95 backdrop-blur-md"
-        style={{
-          zIndex: 'var(--z-bottom-nav)',
-          boxShadow: '0 -2px 12px rgba(15, 23, 42, 0.05)',
-        }}
-      >
-        {mobileNavItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all min-w-[56px] ${
-                isActive ? 'text-indigo-600 font-bold scale-105' : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-tight">
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
     </div>
   );
 }

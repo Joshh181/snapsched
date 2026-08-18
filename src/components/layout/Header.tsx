@@ -104,8 +104,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="px-4 py-4 md:px-6 md:py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
-      {/* Left: Avatar + Personalized Greeting */}
-      <div className="flex items-center gap-3.5 min-w-0">
+      {/* Left: Greeting & Subtitle */}
+      <div className="flex items-center gap-3 min-w-0">
         {/* Mobile Hamburger */}
         <button
           onClick={onToggleSidebar}
@@ -115,21 +115,10 @@ export const Header: React.FC<HeaderProps> = ({
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Soft Lavender Avatar */}
-        <div
-          className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-[16px] text-indigo-700 shadow-sm shrink-0"
-          style={{
-            background: 'linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.8)',
-          }}
-        >
-          {initial}
-        </div>
-
         {/* Greeting + Subtitle */}
         <div className="min-w-0">
           <h1 className="text-[20px] md:text-[22px] font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>{greeting}, {studentName}</span>
+            <span>{greeting}</span>
           </h1>
           <p className="text-[13px] text-slate-500 font-medium truncate mt-0.5">
             Here's your day at a glance.
