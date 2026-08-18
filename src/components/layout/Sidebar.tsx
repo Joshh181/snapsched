@@ -88,14 +88,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`
           fixed top-0 left-0 bottom-0 w-[260px]
           flex flex-col justify-between
-          bg-white border-r select-none
+          bg-white select-none
           transition-transform duration-300
           lg:sticky lg:top-0 lg:h-screen lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
         style={{
           zIndex: 'var(--z-sidebar)',
-          borderColor: 'var(--border-default)',
         }}
       >
         {/* Top section */}

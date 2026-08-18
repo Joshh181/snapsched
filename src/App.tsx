@@ -121,8 +121,6 @@ export function App() {
         className="w-full max-w-[1400px] min-h-screen flex"
         style={{
           background: 'var(--surface-primary)',
-          borderLeft: '1px solid var(--border-subtle)',
-          borderRight: '1px solid var(--border-subtle)',
         }}
       >
         {/* Sidebar */}
