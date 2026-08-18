@@ -8,6 +8,9 @@ import {
   Plus,
   Layers,
   ShieldCheck,
+  Key,
+  ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { ScheduleSet } from '../../types/schedule';
@@ -31,6 +34,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [course, setCourse] = useState(() => schedule.course || 'BS Information Technology');
   const [isSavedProfile, setIsSavedProfile] = useState(false);
 
+  // Gemini API Key state
+  const [apiKey, setApiKey] = useState(() => storageService.getGeminiApiKey());
+  const [isSavedApiKey, setIsSavedApiKey] = useState(false);
+
   const [newSetName, setNewSetName] = useState('');
   const [newSemester, setNewSemester] = useState('2nd Semester');
   const [newYear, setNewYear] = useState('2026-2027');
@@ -42,6 +49,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     storageService.saveActiveSchedule(schedule);
     setIsSavedProfile(true);
     setTimeout(() => setIsSavedProfile(false), 2000);
+  };
+
+  const handleSaveApiKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    storageService.saveGeminiApiKey(apiKey);
+    setIsSavedApiKey(true);
+    setTimeout(() => setIsSavedApiKey(false), 2000);
   };
 
   const handleCreateNewSet = (e: React.FormEvent) => {
@@ -97,10 +111,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       >
         <div>
           <h2 className="font-semibold text-[16px]" style={{ color: 'var(--text-primary)' }}>
-            Settings
+            Settings & Integrations
           </h2>
           <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Manage your profile, academic terms, and backups.
+            Configure Gemini AI API key, student profile, academic terms, and backups.
           </p>
         </div>
         <div
@@ -108,11 +122,89 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
         >
           <ShieldCheck className="w-3.5 h-3.5" />
-          100% Private (Local Storage)
+          100% Private (Stored Locally)
         </div>
       </div>
 
+      {/* Grid: Gemini API Key & Student Profile */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Gemini API Key Configuration */}
+        <div
+          className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
+          style={{
+            background: 'var(--surface-primary)',
+            border: apiKey ? '1px solid var(--brand-200)' : '1px solid var(--border-default)',
+            boxShadow: 'var(--shadow-xs)',
+          }}
+        >
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" style={{ color: 'var(--brand-600)' }} />
+                <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
+                  Google Gemini AI API Key
+                </h3>
+              </div>
+              {apiKey ? (
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-md" style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}>
+                  Active
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-md" style={{ background: 'var(--surface-secondary)', color: 'var(--text-muted)' }}>
+                  Optional
+                </span>
+              )}
+            </div>
+
+            <p className="text-[12px] mb-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Powers the <strong>Schedule Scanner</strong> to instantly extract subjects, times, and rooms from COR images using <code>Gemini 2.0 Flash Vision</code>.
+            </p>
+
+            <form onSubmit={handleSaveApiKey} className="space-y-3">
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Gemini API Key
+                </label>
+                <div className="relative">
+                  <Key className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className={inputClasses}
+                    style={{ ...inputStyle, paddingLeft: '34px' }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[12px] font-medium flex items-center gap-1 hover:underline"
+                  style={{ color: 'var(--brand-600)' }}
+                >
+                  Get free key at Google AI Studio <ExternalLink className="w-3 h-3" />
+                </a>
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg font-medium text-[13px] text-white transition-colors flex items-center justify-center gap-1.5"
+                  style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
+                >
+                  {isSavedApiKey ? (
+                    <><Check className="w-4 h-4 text-emerald-300" /> Saved</>
+                  ) : (
+                    'Save Key'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         {/* Student Profile */}
         <div
           className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
@@ -163,7 +255,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </form>
           </div>
         </div>
+      </div>
 
+      {/* Grid: Backup & Semester Sets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Backup & Restore */}
         <div
           className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
@@ -199,9 +294,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </label>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Create New Semester Set */}
         <div
           className="p-4 rounded-lg space-y-3"
@@ -247,51 +340,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </form>
         </div>
+      </div>
 
-        {/* Manage Existing Sets */}
-        <div
-          className="p-4 rounded-lg space-y-3 flex flex-col justify-between"
-          style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
-        >
-          <div className="space-y-2">
-            <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
-              Active Sets ({allSets.length})
-            </h3>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
-              {allSets.map((s) => (
-                <div
-                  key={s.id}
-                  onClick={() => onSelectSet(s.id)}
-                  className="p-2.5 rounded-lg text-[13px] cursor-pointer flex items-center justify-between transition-colors"
-                  style={{
-                    background: s.id === schedule.id ? 'var(--brand-50)' : 'var(--surface-secondary)',
-                    border: s.id === schedule.id ? '1px solid var(--brand-200)' : '1px solid var(--border-subtle)',
-                    color: s.id === schedule.id ? 'var(--brand-800)' : 'var(--text-primary)',
-                    fontWeight: s.id === schedule.id ? 600 : 400,
-                  }}
-                >
-                  <span className="truncate">{s.name}</span>
-                  <span className="text-[12px] shrink-0" style={{ color: 'var(--text-muted)' }}>{s.items.length} classes</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Active Semester Sets & Sample Reset */}
+      <div
+        className="p-4 rounded-lg space-y-3"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
+            Active Sets ({allSets.length})
+          </h3>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Reset your schedule to the default sample dataset?')) {
+                onResetToSample();
+              }
+            }}
+            className="text-[12px] font-medium flex items-center gap-1 text-red-600 hover:underline cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset to Sample Schedule
+          </button>
+        </div>
 
-          <div className="pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Reset your schedule to the default sample dataset?')) {
-                  onResetToSample();
-                }
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-0.5">
+          {allSets.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => onSelectSet(s.id)}
+              className="p-2.5 rounded-lg text-[13px] cursor-pointer flex items-center justify-between transition-colors"
+              style={{
+                background: s.id === schedule.id ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                border: s.id === schedule.id ? '1px solid var(--brand-200)' : '1px solid var(--border-subtle)',
+                color: s.id === schedule.id ? 'var(--brand-800)' : 'var(--text-primary)',
+                fontWeight: s.id === schedule.id ? 600 : 400,
               }}
-              className="w-full py-2 rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 hover:bg-red-50"
-              style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-default)', background: 'var(--surface-primary)' }}
             >
-              <RotateCcw className="w-4 h-4" />
-              Reset to Sample Schedule
-            </button>
-          </div>
+              <span className="truncate">{s.name}</span>
+              <span className="text-[12px] shrink-0" style={{ color: 'var(--text-muted)' }}>{s.items.length} classes</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

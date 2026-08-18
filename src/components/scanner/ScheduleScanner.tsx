@@ -131,12 +131,24 @@ export const ScheduleScanner: React.FC<ScheduleScannerProps> = ({
             Upload your COR image or document to extract class schedules automatically.
           </p>
         </div>
-        <div
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
-          style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--status-success)' }} />
-          Ready
+        <div className="flex items-center gap-2">
+          {apiKey ? (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
+              style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--status-success)' }} />
+              Gemini Vision AI Active
+            </div>
+          ) : (
+            <button
+              onClick={onOpenSettings}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:opacity-90 cursor-pointer"
+              style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)' }}
+            >
+              <span>⚙️ Add Gemini API Key</span>
+            </button>
+          )}
         </div>
       </div>
 
