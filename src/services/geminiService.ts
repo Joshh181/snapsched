@@ -4,12 +4,11 @@ import { storageService } from './storageService';
 const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const OCR_SYSTEM_PROMPT = `
-You are an expert academic schedule and Certificate of Registration (COR) parser.
-Analyze the provided registration slip, study load form, or timetable image/text.
+const OCR_SYSTEM_PROMPT = `You are an expert academic schedule and Certificate of Registration (COR) parser.
+Analyze the provided registration slip, study load form, class schedule table, or timetable document image/text.
 Extract every enrolled subject/course accurately.
 
-Return ONLY a valid JSON array of objects with the exact structure below (no markdown ticks, no backticks, just pure JSON):
+Return ONLY a valid JSON array of objects with the exact structure below (no markdown ticks, no commentary, pure JSON):
 [
   {
     "code": "IT 311",
@@ -26,7 +25,7 @@ Return ONLY a valid JSON array of objects with the exact structure below (no mar
 
 RULES FOR TIME & DAYS:
 - "days" must ONLY contain single valid values: "M" (Monday), "T" (Tuesday), "W" (Wednesday), "TH" (Thursday), "F" (Friday), "S" (Saturday).
-- Convert all days combinations properly: e.g. "MW" -> ["M", "W"], "TTH" -> ["T", "TH"], "MWF" -> ["M", "W", "F"], "SAT" -> ["S"].
+- Convert all day combinations properly: e.g. "MW" -> ["M", "W"], "TTH" -> ["T", "TH"], "MWF" -> ["M", "W", "F"], "SAT" -> ["S"], "TH" -> ["TH"].
 - "startTime" and "endTime" MUST be in 24-hour "HH:mm" format (e.g. "07:30", "13:30", "15:00", "18:00").
 - If times are written as "7:30AM-9:00AM", convert to "07:30" and "09:00".
 - If times are written as "1:30PM-3:00PM", convert to "13:30" and "15:00".
@@ -40,67 +39,81 @@ export const geminiService = {
     input: { base64Image?: string; mimeType?: string; text?: string },
     userApiKey?: string
   ): Promise<OcrParsedClass[]> {
-    const apiKey =
-      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-      userApiKey ||
-      storageService.getGeminiApiKey();
+    const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    const apiKey = (envKey && envKey.trim()) || (userApiKey && userApiKey.trim()) || storageService.getGeminiApiKey();
 
-    // If an API key is available, call real Google Gemini 2.0 Flash Vision
-    if (apiKey) {
-      try {
-        const payload: any = {
-          contents: [
-            {
-              parts: [],
-            },
-          ],
-        };
-
-        if (input.base64Image && input.mimeType) {
-          payload.contents[0].parts.push({
-            inlineData: {
-              data: input.base64Image,
-              mimeType: input.mimeType,
-            },
-          });
-        }
-
-        const promptText = `${OCR_SYSTEM_PROMPT}\n\nDocument Content / Instructions:\n${input.text || 'Extract all class schedule items from this image accurately.'}`;
-        payload.contents[0].parts.push({ text: promptText });
-
-        const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${apiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData?.error?.message || `API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        
-        // Clean JSON formatting
-        const cleanedJson = rawContent
-          .replace(/```json/gi, '')
-          .replace(/```/g, '')
-          .trim();
-
-        const parsedItems = JSON.parse(cleanedJson);
-        return this.formatParsedClasses(parsedItems);
-      } catch (err: any) {
-        console.warn('Gemini API call failed, using intelligent local heuristic parser fallback:', err.message);
-        // Fallback to local heuristic parser if API key fails or network error
-        return this.fallbackHeuristicParser(input.text || '');
+    if (!apiKey) {
+      if (input.text) {
+        return this.fallbackHeuristicParser(input.text);
       }
+      throw new Error(
+        'No Gemini API Key found. Please add your Gemini API Key in your .env file: VITE_GEMINI_API_KEY=AIzaSy...'
+      );
     }
 
-    // If no API key is provided, use our intelligent local parser
-    return this.fallbackHeuristicParser(input.text || '');
+    const payload: any = {
+      contents: [
+        {
+          parts: [],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.1,
+      },
+    };
+
+    if (input.base64Image && input.mimeType) {
+      payload.contents[0].parts.push({
+        inlineData: {
+          mimeType: input.mimeType,
+          data: input.base64Image,
+        },
+      });
+    }
+
+    const promptText = `${OCR_SYSTEM_PROMPT}\n\nInput Document / Instructions:\n${
+      input.text || 'Extract all class schedule items from this image accurately.'
+    }`;
+    payload.contents[0].parts.push({ text: promptText });
+
+    const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      const msg = errData?.error?.message || `Google Gemini API returned error code ${response.status}`;
+      throw new Error(`Gemini Vision Error: ${msg}`);
+    }
+
+    const data = await response.json();
+    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!rawContent.trim()) {
+      throw new Error('Gemini API returned an empty response for this image.');
+    }
+
+    // Clean JSON formatting
+    const cleanedJson = rawContent
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
+
+    try {
+      const parsedItems = JSON.parse(cleanedJson);
+      const formatted = this.formatParsedClasses(parsedItems);
+      if (formatted.length === 0) {
+        throw new Error('No class schedule items could be detected in the provided document.');
+      }
+      return formatted;
+    } catch (parseErr: any) {
+      throw new Error(`Failed to parse extracted schedule JSON: ${parseErr.message}`);
+    }
   },
 
   /**
@@ -131,7 +144,7 @@ export const geminiService = {
         endTime: this.normalize24hTime(item.endTime || '09:30'),
         room: item.room || 'TBA',
         instructor: item.instructor || 'Staff Instructor',
-        confidence: 0.95,
+        confidence: 0.98,
         selected: true,
       };
     });
@@ -198,22 +211,16 @@ export const geminiService = {
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
     const results: OcrParsedClass[] = [];
 
-    // Look for lines that look like tabular course rows
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-
-      // Skip header lines
       if (line.includes('COLLEGE') || line.includes('STUDENT') || line.includes('---') || line.includes('CODE')) {
         continue;
       }
 
-      // Regex to match: CODE (e.g. IT 311 or CS 311) | Description | Units | Day | Time | Room
-      // Example: IT 311 Advanced Web Development 3.0 MW 07:30AM-09:00AM IT-LAB 2
       const timeMatch = line.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s*-\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
       
       if (timeMatch) {
         const parts = line.split(/\s{2,}|\t/).filter(Boolean);
-        
         let code = 'SUBJ 101';
         let name = 'University Course';
         let units = 3.0;
@@ -227,7 +234,6 @@ export const geminiService = {
           dayStr = parts[3] || 'MW';
           room = parts[parts.length - 1] || 'ROOM 101';
         } else {
-          // Token fallback
           const tokens = line.split(/\s+/);
           if (tokens.length >= 2) {
             code = `${tokens[0]} ${tokens[1]}`;
@@ -253,68 +259,6 @@ export const geminiService = {
       }
     }
 
-    // Default fallback mock if text was empty or unrecognizable
-    if (results.length === 0) {
-      return [
-        {
-          id: 'mock-1',
-          code: 'IT 311',
-          name: 'Advanced Web Development & Frameworks',
-          section: 'BSIT 3-A',
-          units: 3,
-          days: ['M', 'W'],
-          startTime: '07:30',
-          endTime: '09:00',
-          room: 'IT-LAB 2',
-          instructor: 'Engr. Morales',
-          confidence: 0.98,
-          selected: true,
-        },
-        {
-          id: 'mock-2',
-          code: 'IT 312',
-          name: 'Mobile Application Development',
-          section: 'BSIT 3-A',
-          units: 3,
-          days: ['M', 'W'],
-          startTime: '09:00',
-          endTime: '10:30',
-          room: 'COM-LAB 4',
-          instructor: 'Prof. Santos',
-          confidence: 0.96,
-          selected: true,
-        },
-        {
-          id: 'mock-3',
-          code: 'IT 313',
-          name: 'Cloud Computing & DB Administration',
-          section: 'BSIT 3-A',
-          units: 3,
-          days: ['M', 'W'],
-          startTime: '13:30',
-          endTime: '15:00',
-          room: 'TECH-302',
-          instructor: 'Dr. Villanueva',
-          confidence: 0.94,
-          selected: true,
-        },
-        {
-          id: 'mock-4',
-          code: 'IT 314',
-          name: 'Information Assurance & Security',
-          section: 'BSIT 3-A',
-          units: 3,
-          days: ['T', 'TH'],
-          startTime: '08:00',
-          endTime: '10:00',
-          room: 'LEC-204',
-          instructor: 'Prof. Dela Cruz',
-          confidence: 0.95,
-          selected: true,
-        },
-      ];
-    }
-
     return results;
-  }
+  },
 };
