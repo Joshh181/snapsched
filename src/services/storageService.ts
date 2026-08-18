@@ -2,21 +2,39 @@ import { ScheduleSet, FriendSchedule, CategoryItem, DEFAULT_CATEGORIES } from '.
 import { INITIAL_SCHEDULE_SET, SAMPLE_FRIEND_SCHEDULES } from '../data/sampleSchedules';
 
 const STORAGE_KEYS = {
-  ACTIVE_SCHEDULE: 'snapsched_active_schedule',
-  ALL_SETS: 'snapsched_all_sets',
+  ACTIVE_SCHEDULE: 'snapsched_active_schedule_v2',
+  ALL_SETS: 'snapsched_all_sets_v2',
   GEMINI_API_KEY: 'snapsched_gemini_api_key',
-  FRIENDS: 'snapsched_friends',
+  FRIENDS: 'snapsched_friends_v2',
   CATEGORIES: 'snapsched_categories',
   THEME_MODE: 'snapsched_theme_mode',
   USER_PROFILE: 'snapsched_user_profile',
 };
+
+// Clear legacy fake mock data keys from prior versions
+try {
+  localStorage.removeItem('snapsched_active_schedule');
+  localStorage.removeItem('snapsched_all_sets');
+  localStorage.removeItem('snapsched_friends');
+} catch (e) {
+  // ignore
+}
 
 export const storageService = {
   // Active Schedule
   getActiveSchedule(): ScheduleSet {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_SCHEDULE);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        // Filter out any legacy sample items if present
+        if (parsed.items) {
+          parsed.items = parsed.items.filter(
+            (item: any) => !['class-1', 'class-2', 'class-3', 'class-4', 'class-5', 'class-6', 'class-gym-1', 'class-work-1', 'class-study-1'].includes(item.id)
+          );
+        }
+        return parsed;
+      }
     } catch (e) {
       console.warn('Failed to read schedule from localStorage', e);
     }
