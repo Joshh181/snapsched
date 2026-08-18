@@ -48,20 +48,28 @@ export const useSchedule = () => {
 
   // Import confirmed OCR items into active schedule
   const importOcrClasses = useCallback((ocrClasses: OcrParsedClass[], replaceExisting: boolean = false) => {
-    const newItems: ClassItem[] = ocrClasses.map((item, idx) => ({
-      id: `class-${Date.now()}-${idx}`,
-      code: item.code,
-      name: item.name,
-      section: item.section || activeSchedule.course || 'Enrolled',
-      instructor: item.instructor || 'Department Faculty',
-      room: item.room,
-      days: item.days,
-      startTime: item.startTime,
-      endTime: item.endTime,
-      color: COLOR_PALETTES[idx % COLOR_PALETTES.length],
-      units: item.units || 3,
-      scheduleId: activeSchedule.id,
-    }));
+    const savedCategories = storageService.getCategories();
+    const newItems: ClassItem[] = ocrClasses.map((item, idx) => {
+      const itemCategory = item.category || 'School';
+      const matchedCat = savedCategories.find((c) => c.name.toLowerCase() === itemCategory.toLowerCase());
+      const itemColor = matchedCat?.color || COLOR_PALETTES[idx % COLOR_PALETTES.length];
+
+      return {
+        id: `class-${Date.now()}-${idx}`,
+        code: item.code,
+        name: item.name,
+        category: itemCategory,
+        section: item.section || activeSchedule.course || 'Enrolled',
+        instructor: item.instructor || 'Department Faculty',
+        room: item.room,
+        days: item.days,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        color: itemColor,
+        units: item.units || 3,
+        scheduleId: activeSchedule.id,
+      };
+    });
 
     setActiveSchedule((prev) => ({
       ...prev,

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Trash2, CheckCircle2, ArrowRight, ChevronDown, ChevronUp, Clock, MapPin, Layers } from 'lucide-react';
-import { OcrParsedClass, DAYS_OF_WEEK } from '../../types/schedule';
+import { Trash2, CheckCircle2, ArrowRight, ChevronDown, ChevronUp, Clock, MapPin, Tag } from 'lucide-react';
+import { OcrParsedClass, DAYS_OF_WEEK, CategoryItem } from '../../types/schedule';
 import { format12Hour } from '../../hooks/useVacantPeriods';
+import { storageService } from '../../services/storageService';
 
 interface OcrReviewTableProps {
   items: OcrParsedClass[];
@@ -22,12 +23,24 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
   onConfirmImport,
   onReset,
 }) => {
+  const [categories] = useState<CategoryItem[]>(() => storageService.getCategories());
+  const [selectedTargetCategory, setSelectedTargetCategory] = useState<string>(() => {
+    return items[0]?.category || categories[0]?.name || 'School';
+  });
+
   const selectedCount = items.filter((i) => i.selected).length;
   const totalUnits = items.filter((i) => i.selected).reduce((sum, i) => sum + (i.units || 0), 0);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedCardId((prev) => (prev === id ? null : id));
+  };
+
+  const handleApplyCategoryToAll = (categoryName: string) => {
+    setSelectedTargetCategory(categoryName);
+    items.forEach((item) => {
+      onUpdateItem(item.id, { category: categoryName });
+    });
   };
 
   return (
@@ -49,7 +62,7 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
               Extraction Complete
             </h3>
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-              <strong>{items.length} subjects</strong> found · <strong>{totalUnits} units</strong>. Select classes to import.
+              <strong>{items.length} items</strong> found · <strong>{totalUnits} units</strong>. Select items to import.
             </p>
           </div>
         </div>
@@ -68,9 +81,45 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
             className="px-4 py-2 rounded-lg font-medium text-[13px] text-white transition-colors flex items-center gap-1.5 disabled:opacity-40"
             style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
           >
-            Import {selectedCount} Classes
+            Import {selectedCount} to {selectedTargetCategory}
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
+        </div>
+      </div>
+
+      {/* Target Category Selector Bar */}
+      <div
+        className="p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+      >
+        <div className="flex items-center gap-2">
+          <Tag className="w-4 h-4 text-indigo-600 shrink-0" />
+          <span className="text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Import Category Destination:
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {categories.map((cat) => {
+            const isSelected = selectedTargetCategory.toLowerCase() === cat.name.toLowerCase();
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => handleApplyCategoryToAll(cat.name)}
+                className="px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5 transition-all"
+                style={{
+                  background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                  color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
+                  border: isSelected ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                  fontWeight: isSelected ? 600 : 500,
+                }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                <span>{cat.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -99,6 +148,8 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
       <div className="space-y-2.5 md:hidden">
         {items.map((item) => {
           const isExpanded = expandedCardId === item.id;
+          const itemCat = item.category || selectedTargetCategory;
+
           return (
             <div
               key={item.id}
@@ -123,6 +174,12 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-[13px]" style={{ color: 'var(--text-primary)' }}>
                         {item.code}
+                      </span>
+                      <span
+                        className="text-[10px] px-1.5 py-0.2 rounded font-medium"
+                        style={{ background: 'var(--surface-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                      >
+                        {itemCat}
                       </span>
                       {item.room && (
                         <span className="text-[11px] px-1.5 py-0.2 rounded" style={{ background: 'var(--surface-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
@@ -159,17 +216,13 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
                 </div>
               </div>
 
-              {/* Time & Days Summary */}
-              <div className="flex items-center justify-between gap-2 mt-2 pt-2 text-[11px]" style={{ borderTop: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                <div className="flex items-center gap-1 tabular-nums">
-                  <Clock className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-                  <span>{format12Hour(item.startTime)} – {format12Hour(item.endTime)}</span>
-                </div>
-                <div className="flex items-center gap-0.5">
+              {/* Time and Days summary */}
+              <div className="mt-2 pt-2 flex items-center justify-between text-[12px]" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center gap-1">
                   {DAYS_OF_WEEK.map((d) => (
                     <span
                       key={d.key}
-                      className="px-1 py-0.2 rounded text-[10px] font-medium"
+                      className="px-1 py-0.5 rounded text-[10px] font-medium"
                       style={{
                         background: item.days.includes(d.key) ? 'var(--brand-100)' : 'transparent',
                         color: item.days.includes(d.key) ? 'var(--brand-800)' : 'var(--text-muted)',
@@ -179,42 +232,73 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
                     </span>
                   ))}
                 </div>
+                <div className="flex items-center gap-1 tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                  <Clock className="w-3 h-3 text-slate-400" />
+                  {format12Hour(item.startTime)} – {format12Hour(item.endTime)}
+                </div>
               </div>
 
-              {/* Expandable inline edit fields */}
+              {/* Expandable Editable Form */}
               {isExpanded && (
-                <div className="mt-3 pt-3 space-y-2 text-[12px]" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <div className="mt-3 pt-3 space-y-2.5" style={{ borderTop: '1px dashed var(--border-subtle)' }}>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Subject Code</label>
+                      <label className="text-[11px] font-medium text-slate-500">Code</label>
                       <input
                         type="text"
                         value={item.code}
                         onChange={(e) => onUpdateItem(item.id, { code: e.target.value })}
-                        className="w-full px-2 py-1 rounded border text-[12px]"
-                        style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-default)', color: 'var(--text-primary)' }}
+                        className="w-full text-[12px] p-1.5 rounded border mt-0.5"
+                        style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Room</label>
-                      <input
-                        type="text"
-                        value={item.room}
-                        onChange={(e) => onUpdateItem(item.id, { room: e.target.value })}
-                        className="w-full px-2 py-1 rounded border text-[12px]"
-                        style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-default)', color: 'var(--text-primary)' }}
-                      />
+                      <label className="text-[11px] font-medium text-slate-500">Category</label>
+                      <select
+                        value={item.category || selectedTargetCategory}
+                        onChange={(e) => onUpdateItem(item.id, { category: e.target.value })}
+                        className="w-full text-[12px] p-1.5 rounded border mt-0.5"
+                        style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
+
                   <div>
-                    <label className="block text-[10px] font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Subject Name</label>
+                    <label className="text-[11px] font-medium text-slate-500">Subject Name</label>
                     <input
                       type="text"
                       value={item.name}
                       onChange={(e) => onUpdateItem(item.id, { name: e.target.value })}
-                      className="w-full px-2 py-1 rounded border text-[12px]"
-                      style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-default)', color: 'var(--text-primary)' }}
+                      className="w-full text-[12px] p-1.5 rounded border mt-0.5"
+                      style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-500">Location / Room</label>
+                      <input
+                        type="text"
+                        value={item.room}
+                        onChange={(e) => onUpdateItem(item.id, { room: e.target.value })}
+                        className="w-full text-[12px] p-1.5 rounded border mt-0.5"
+                        style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-500">Units</label>
+                      <input
+                        type="number"
+                        value={item.units || 3}
+                        onChange={(e) => onUpdateItem(item.id, { units: Number(e.target.value) })}
+                        className="w-full text-[12px] p-1.5 rounded border mt-0.5"
+                        style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -234,6 +318,7 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
               <tr>
                 <th className="p-3 w-8 text-center" />
                 <th className="p-3 text-[11px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>Code</th>
+                <th className="p-3 text-[11px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>Category</th>
                 <th className="p-3 text-[11px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>Subject</th>
                 <th className="p-3 text-[11px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>Days</th>
                 <th className="p-3 text-[11px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>Time</th>
@@ -266,6 +351,18 @@ export const OcrReviewTable: React.FC<OcrReviewTableProps> = ({
                       className="bg-transparent border-b border-transparent focus:border-[var(--brand-500)] px-1 py-0.5 rounded text-[13px] w-20"
                       style={{ color: 'var(--text-primary)' }}
                     />
+                  </td>
+                  <td className="p-3">
+                    <select
+                      value={item.category || selectedTargetCategory}
+                      onChange={(e) => onUpdateItem(item.id, { category: e.target.value })}
+                      className="text-[12px] px-2 py-1 rounded border focus:outline-none"
+                      style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="p-3" style={{ color: 'var(--text-secondary)' }}>
                     <input
