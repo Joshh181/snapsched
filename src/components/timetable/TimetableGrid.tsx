@@ -10,6 +10,8 @@ import {
   Plus,
   X,
   Tag,
+  Trash2,
+  CheckSquare,
 } from 'lucide-react';
 import { ClassItem, VacantPeriod, DAYS_OF_WEEK, DayAbbreviation, CategoryItem } from '../../types/schedule';
 import { ClassCard } from './ClassCard';
@@ -29,6 +31,8 @@ interface TimetableGridProps {
   onSelectVacant?: (vacant: VacantPeriod) => void;
   selectedCategory?: string;
   onSelectCategory?: (cat: string) => void;
+  onClearCategory?: (cat: string) => void;
+  onDeleteMultiple?: (ids: string[]) => void;
 }
 
 interface PositionedClass {
@@ -134,9 +138,13 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   onSelectVacant,
   selectedCategory: propCategory,
   onSelectCategory,
+  onClearCategory,
+  onDeleteMultiple,
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'agenda'>('grid');
   const [selectedDayFilter, setSelectedDayFilter] = useState<DayAbbreviation | 'ALL'>('ALL');
+  const [isBatchSelectMode, setIsBatchSelectMode] = useState(false);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   
   // Categories state
   const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
@@ -150,6 +158,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   const handleSelectCat = (catName: string) => {
     setInternalCategory(catName);
     onSelectCategory?.(catName);
+    setSelectedClassIds([]);
   };
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -290,8 +299,23 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
           })}
         </div>
 
-        {/* Add Category Button */}
-        <div className="shrink-0 pl-1 border-l" style={{ borderColor: 'var(--border-subtle)' }}>
+        {/* Category Actions: Clear Category & Add Category */}
+        <div className="shrink-0 pl-1 border-l flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
+          {filteredClasses.length > 0 && (
+            <button
+              onClick={() => {
+                if (confirm(`Are you sure you want to delete all ${filteredClasses.length} item(s) in "${activeCategoryName}"?`)) {
+                  onClearCategory?.(activeCategoryName);
+                }
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium text-red-600 hover:bg-red-50 transition-colors"
+              title={`Clear all ${activeCategoryName} items`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear {activeCategoryName} ({filteredClasses.length})</span>
+            </button>
+          )}
+
           {isAddingCategory ? (
             <form onSubmit={handleCreateCategory} className="flex items-center gap-1">
               <input
@@ -764,7 +788,96 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
       {/* AGENDA VIEW */}
       {viewMode === 'agenda' && (
-        <div className="space-y-3">
+        <div className="space-y-3 relative pb-16">
+          {/* Agenda Toolbar: Select Multiple Toggle */}
+          {filteredClasses.length > 0 && (
+            <div
+              className="p-2.5 rounded-lg flex items-center justify-between gap-2"
+              style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)' }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  {filteredClasses.length} item(s) in {activeCategoryName}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBatchSelectMode(!isBatchSelectMode);
+                  setSelectedClassIds([]);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors"
+                style={{
+                  background: isBatchSelectMode ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                  color: isBatchSelectMode ? 'var(--brand-700)' : 'var(--text-secondary)',
+                  border: isBatchSelectMode ? '1px solid var(--brand-300)' : '1px solid var(--border-subtle)',
+                }}
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>{isBatchSelectMode ? 'Done Selecting' : 'Select Multiple'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Sticky Floating Bulk Action Bar */}
+          {isBatchSelectMode && (
+            <div
+              className="sticky top-2 z-30 p-3 rounded-lg flex items-center justify-between gap-3 animate-slide-in-left"
+              style={{
+                background: 'var(--text-primary)',
+                color: 'white',
+                boxShadow: 'var(--shadow-overlay)',
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedClassIds.length === filteredClasses.length && filteredClasses.length > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedClassIds(filteredClasses.map((c) => c.id));
+                    } else {
+                      setSelectedClassIds([]);
+                    }
+                  }}
+                  className="w-4 h-4 rounded cursor-pointer accent-indigo-500"
+                />
+                <span className="text-[13px] font-semibold">
+                  {selectedClassIds.length} of {filteredClasses.length} selected
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedClassIds.length === 0) return;
+                    if (confirm(`Delete all ${selectedClassIds.length} selected item(s)?`)) {
+                      onDeleteMultiple?.(selectedClassIds);
+                      setSelectedClassIds([]);
+                      setIsBatchSelectMode(false);
+                    }
+                  }}
+                  disabled={selectedClassIds.length === 0}
+                  className="px-3.5 py-1.5 rounded-md text-[12px] font-semibold bg-red-600 hover:bg-red-700 text-white flex items-center gap-1.5 disabled:opacity-40 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Selected ({selectedClassIds.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBatchSelectMode(false);
+                    setSelectedClassIds([]);
+                  }}
+                  className="px-2.5 py-1.5 rounded-md text-[12px] font-medium text-slate-300 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {activeDays.map((d) => {
             const isToday = d.key === todayAbbr;
             const dayClasses = filteredClasses
@@ -811,27 +924,50 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   <div className="space-y-2">
                     {dayClasses.map((item) => {
                       const breakAfter = dayVacant.find((v) => v.startTime === item.endTime);
+                      const isSelectedInBatch = selectedClassIds.includes(item.id);
 
                       return (
                         <React.Fragment key={item.id}>
                           <div
-                            onClick={() => onEditClass(item)}
+                            onClick={() => {
+                              if (isBatchSelectMode) {
+                                setSelectedClassIds((prev) =>
+                                  prev.includes(item.id)
+                                    ? prev.filter((id) => id !== item.id)
+                                    : [...prev, item.id]
+                                );
+                              } else {
+                                onEditClass(item);
+                              }
+                            }}
                             className="p-3 rounded-lg cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-2 group relative overflow-hidden"
                             style={{
-                              background: 'var(--surface-secondary)',
-                              border: '1px solid var(--border-subtle)',
-                              borderLeft: `2px solid ${item.color || '#4f46e5'}`,
+                              background: isSelectedInBatch ? 'var(--brand-50)' : 'var(--surface-secondary)',
+                              border: isSelectedInBatch ? '1px solid var(--brand-400)' : '1px solid var(--border-subtle)',
+                              borderLeft: `3px solid ${item.color || '#4f46e5'}`,
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'var(--surface-tertiary)';
-                              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                              if (!isSelectedInBatch) {
+                                e.currentTarget.style.background = 'var(--surface-tertiary)';
+                                e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                              }
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'var(--surface-secondary)';
-                              e.currentTarget.style.boxShadow = 'none';
+                              if (!isSelectedInBatch) {
+                                e.currentTarget.style.background = 'var(--surface-secondary)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }
                             }}
                           >
                             <div className="flex items-center gap-3">
+                              {isBatchSelectMode && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelectedInBatch}
+                                  onChange={() => {}}
+                                  className="w-4 h-4 rounded cursor-pointer accent-indigo-600 shrink-0"
+                                />
+                              )}
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>

@@ -38,11 +38,36 @@ export const useSchedule = () => {
     }));
   }, []);
 
-  // Delete class item
+  // Delete single class item
   const deleteClassItem = useCallback((id: string) => {
     setActiveSchedule((prev) => ({
       ...prev,
       items: prev.items.filter((c) => c.id !== id),
+    }));
+  }, []);
+
+  // Bulk delete multiple classes by ID
+  const deleteMultipleClasses = useCallback((ids: string[]) => {
+    const idSet = new Set(ids);
+    setActiveSchedule((prev) => ({
+      ...prev,
+      items: prev.items.filter((c) => !idSet.has(c.id)),
+    }));
+  }, []);
+
+  // Clear all items in a specific category
+  const clearCategoryClasses = useCallback((categoryName: string) => {
+    setActiveSchedule((prev) => ({
+      ...prev,
+      items: prev.items.filter((c) => (c.category || 'School').toLowerCase() !== categoryName.toLowerCase()),
+    }));
+  }, []);
+
+  // Clear all items across all categories
+  const clearAllClasses = useCallback(() => {
+    setActiveSchedule((prev) => ({
+      ...prev,
+      items: [],
     }));
   }, []);
 
@@ -135,6 +160,9 @@ export const useSchedule = () => {
     addClassItem,
     updateClassItem,
     deleteClassItem,
+    deleteMultipleClasses,
+    clearCategoryClasses,
+    clearAllClasses,
     importOcrClasses,
     switchScheduleSet,
     createNewScheduleSet,

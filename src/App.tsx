@@ -36,6 +36,9 @@ export function App() {
     addClassItem,
     updateClassItem,
     deleteClassItem,
+    deleteMultipleClasses,
+    clearCategoryClasses,
+    clearAllClasses,
     importOcrClasses,
     switchScheduleSet,
     createNewScheduleSet,
@@ -157,6 +160,8 @@ export function App() {
                   onSelectCategory={setSelectedCategory}
                   onEditClass={handleOpenEditModal}
                   onDeleteClass={deleteClassItem}
+                  onClearCategory={clearCategoryClasses}
+                  onDeleteMultiple={deleteMultipleClasses}
                   onAddClass={handleOpenAddModal}
                   onSelectVacant={handleSelectVacantFromGrid}
                 />
@@ -192,6 +197,7 @@ export function App() {
                   onSelectSet={switchScheduleSet}
                   onCreateSet={createNewScheduleSet}
                   onResetToSample={resetToSample}
+                  onClearAll={clearAllClasses}
                 />
               )}
             </div>

@@ -21,6 +21,7 @@ interface SettingsModalProps {
   onSelectSet: (setId: string) => void;
   onCreateSet: (name: string, semester: string, academicYear: string) => void;
   onResetToSample: () => void;
+  onClearAll?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -29,6 +30,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSelectSet,
   onCreateSet,
   onResetToSample,
+  onClearAll,
 }) => {
   const [studentName, setStudentName] = useState(() => schedule.studentName || 'Josh');
   const [course, setCourse] = useState(() => schedule.course || 'BS Information Technology');
@@ -368,18 +370,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <h3 className="font-semibold text-[14px]" style={{ color: 'var(--text-primary)' }}>
             Active Sets ({allSets.length})
           </h3>
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('Reset your schedule to the default sample dataset?')) {
-                onResetToSample();
-              }
-            }}
-            className="text-[12px] font-medium flex items-center gap-1 text-red-600 hover:underline cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset to Sample Schedule
-          </button>
+          <div className="flex items-center gap-3">
+            {schedule.items.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete all ${schedule.items.length} classes across all categories?`)) {
+                    onClearAll?.();
+                  }
+                }}
+                className="text-[12px] font-medium flex items-center gap-1 text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear All Classes ({schedule.items.length})
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Reset your schedule to a clean empty state?')) {
+                  onResetToSample();
+                }
+              }}
+              className="text-[12px] font-medium flex items-center gap-1 text-slate-500 hover:text-slate-700 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset Schedule
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-0.5">
