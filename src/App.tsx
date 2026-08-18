@@ -113,16 +113,14 @@ export function App() {
 
   return (
     <div
-      className="min-h-screen flex justify-center"
-      style={{ background: 'var(--surface-ground)', color: 'var(--text-primary)' }}
+      className="min-h-screen relative overflow-x-hidden"
+      style={{
+        background: 'radial-gradient(ellipse at 12% 8%, #e0e7ff 0%, transparent 42%), radial-gradient(ellipse at 88% 12%, #ede9fe 0%, transparent 40%), #f4f6fc',
+        color: 'var(--text-primary)',
+      }}
     >
-      {/* Bounded application shell */}
-      <div
-        className="w-full max-w-[1400px] min-h-screen flex"
-        style={{
-          background: 'var(--surface-primary)',
-        }}
-      >
+      {/* Floating Canvas Shell */}
+      <div className="w-full max-w-[1500px] mx-auto min-h-screen p-2 md:p-4 lg:p-5 flex gap-5">
         {/* Sidebar */}
         <Sidebar
           activeTab={activeTab}
@@ -147,10 +145,7 @@ export function App() {
           />
 
           {/* Workspace content */}
-          <main
-            className="flex-1 p-4 md:p-5 lg:p-6 w-full pb-20 lg:pb-6"
-            style={{ background: 'var(--surface-ground)' }}
-          >
+          <main className="flex-1 w-full pb-20 lg:pb-6 px-1 md:px-2">
             <div className="animate-fade-in">
               {activeTab === 'timetable' && (
                 <TimetableGrid

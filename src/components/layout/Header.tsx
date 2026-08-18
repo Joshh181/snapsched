@@ -3,6 +3,8 @@ import {
   Clock,
   Plus,
   Menu,
+  Sparkles,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { ScheduleSet } from '../../types/schedule';
 
@@ -21,12 +23,18 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  schedule: _schedule,
+  schedule,
   onOpenAddModal,
   onToggleSidebar,
   currentStatus,
   currentTime,
 }) => {
+  const studentName = schedule.studentName || 'Josh';
+  const initial = studentName.charAt(0).toUpperCase() || 'J';
+
+  const hour = currentTime.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
   const formattedDate = currentTime.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -43,21 +51,21 @@ export const Header: React.FC<HeaderProps> = ({
     switch (currentStatus.type) {
       case 'class':
         return {
-          dotColor: 'var(--brand-600)',
-          bg: 'var(--brand-50)',
-          border: 'var(--brand-200)',
-          text: 'var(--brand-700)',
+          dotColor: '#4f46e5',
+          bg: '#eef2ff',
+          border: '#c7d2fe',
+          text: '#4338ca',
           label: 'In Class',
-          timeBg: 'var(--brand-100)',
-          timeColor: 'var(--brand-800)',
+          timeBg: '#e0e7ff',
+          timeColor: '#3730a3',
           timeText: currentStatus.endsIn ? `${currentStatus.endsIn} left` : '',
           pulse: true,
         };
       case 'break':
         return {
-          dotColor: 'var(--status-warning)',
-          bg: 'var(--status-warning-bg)',
-          border: 'var(--status-warning-border)',
+          dotColor: '#d97706',
+          bg: '#fffbeb',
+          border: '#fde68a',
           text: '#92400e',
           label: 'Free Time',
           timeBg: '#fef3c7',
@@ -67,9 +75,9 @@ export const Header: React.FC<HeaderProps> = ({
         };
       case 'upcoming':
         return {
-          dotColor: 'var(--status-success)',
-          bg: 'var(--status-success-bg)',
-          border: 'var(--status-success-border)',
+          dotColor: '#059669',
+          bg: '#ecfdf5',
+          border: '#a7f3d0',
           text: '#065f46',
           label: 'Next',
           timeBg: '#d1fae5',
@@ -79,13 +87,13 @@ export const Header: React.FC<HeaderProps> = ({
         };
       default:
         return {
-          dotColor: 'var(--text-muted)',
-          bg: 'var(--surface-secondary)',
-          border: 'var(--border-default)',
-          text: 'var(--text-secondary)',
-          label: '',
-          timeBg: 'var(--surface-tertiary)',
-          timeColor: 'var(--text-secondary)',
+          dotColor: '#6366f1',
+          bg: '#f8faff',
+          border: '#e0e7ff',
+          text: '#4b5563',
+          label: 'Day Status',
+          timeBg: '#f1f5f9',
+          timeColor: '#475569',
           timeText: '',
           pulse: false,
         };
@@ -95,28 +103,45 @@ export const Header: React.FC<HeaderProps> = ({
   const status = getStatusConfig();
 
   return (
-    <header
-      className="h-14 px-4 flex items-center justify-between sticky top-0 select-none"
-      style={{
-        background: 'var(--surface-primary)',
-        zIndex: 'var(--z-header)',
-      }}
-    >
-      {/* Left: Mobile menu + Status */}
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        {/* Mobile hamburger */}
+    <header className="px-4 py-4 md:px-6 md:py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
+      {/* Left: Avatar + Personalized Greeting */}
+      <div className="flex items-center gap-3.5 min-w-0">
+        {/* Mobile Hamburger */}
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 transition-colors"
+          className="lg:hidden p-2 -ml-2 rounded-xl hover:bg-white/80 transition-colors shrink-0 text-slate-600"
           aria-label="Open navigation"
-          style={{ color: 'var(--text-secondary)' }}
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Status badge */}
+        {/* Soft Lavender Avatar */}
         <div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] max-w-full min-w-0"
+          className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-[16px] text-indigo-700 shadow-sm shrink-0"
+          style={{
+            background: 'linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.8)',
+          }}
+        >
+          {initial}
+        </div>
+
+        {/* Greeting + Subtitle */}
+        <div className="min-w-0">
+          <h1 className="text-[20px] md:text-[22px] font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <span>{greeting}, {studentName}</span>
+          </h1>
+          <p className="text-[13px] text-slate-500 font-medium truncate mt-0.5">
+            Here's your day at a glance.
+          </p>
+        </div>
+      </div>
+
+      {/* Right: Floating Status Pill + Time Badge + Add Class Action */}
+      <div className="flex items-center gap-2.5 flex-wrap md:flex-nowrap shrink-0">
+        {/* Live Status Pill */}
+        <div
+          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium shadow-xs"
           style={{
             background: status.bg,
             border: `1px solid ${status.border}`,
@@ -127,53 +152,39 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-2 h-2 rounded-full shrink-0 ${status.pulse ? 'animate-pulse' : ''}`}
             style={{ backgroundColor: status.dotColor }}
           />
-          {status.label && (
-            <span className="font-semibold shrink-0">{status.label}:</span>
-          )}
-          <span className="truncate" style={{ color: 'var(--text-primary)' }}>
+          <span className="truncate max-w-[200px]">
             {currentStatus.details}
           </span>
           {status.timeText && (
             <span
-              className="text-[11px] font-medium px-1.5 py-0.5 rounded-md shrink-0 tabular-nums hidden sm:inline"
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-lg shrink-0 tabular-nums hidden sm:inline"
               style={{ background: status.timeBg, color: status.timeColor }}
             >
               {status.timeText}
             </span>
           )}
         </div>
-      </div>
 
-      {/* Right: Clock + Add */}
-      <div className="flex items-center gap-2 shrink-0 ml-3">
-        {/* Clock */}
+        {/* Live Clock Badge */}
         <div
-          className="hidden sm:flex items-center gap-2 text-[13px] px-3 py-1.5 rounded-lg"
-          style={{
-            background: 'var(--surface-secondary)',
-            border: '1px solid var(--border-subtle)',
-            color: 'var(--text-secondary)',
-          }}
+          className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
         >
-          <Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-          <span className="hidden md:inline">{formattedDate}</span>
-          <span className="hidden md:inline" style={{ color: 'var(--border-strong)' }}>·</span>
-          <span className="font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
-            {formattedTime}
-          </span>
+          <Clock className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="font-semibold text-slate-800 tabular-nums">{formattedTime}</span>
+          <span className="text-slate-400">·</span>
+          <span className="text-slate-500">{formattedDate}</span>
         </div>
 
-        {/* Add Class */}
+        {/* Add Class Action Pill */}
         <button
           onClick={onOpenAddModal}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-white font-medium text-[13px] transition-colors hover:opacity-90"
+          className="px-4 py-2 rounded-2xl font-semibold text-[13px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
           style={{
-            background: 'var(--brand-600)',
-            boxShadow: 'var(--shadow-xs)',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
           }}
         >
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Add Class</span>
+          <span>Add Class</span>
         </button>
       </div>
     </header>

@@ -262,15 +262,19 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   const mobileDay = DAYS_OF_WEEK[mobileDayIndex];
 
   return (
-    <div className="space-y-3 select-none">
-      {/* ── Category Pill Bar ── */}
+    <div className="space-y-4 select-none">
+      {/* ── Category Pill Bar (Floating Card) ── */}
       <div
-        className="p-2 rounded-lg flex items-center justify-between gap-2 overflow-x-auto"
-        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+        className="p-3 rounded-3xl flex items-center justify-between gap-3 overflow-x-auto"
+        style={{
+          background: 'var(--surface-primary)',
+          boxShadow: 'var(--shadow-card)',
+          border: '1px solid rgba(255, 255, 255, 0.8)',
+        }}
       >
-        <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
-          <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-1 flex items-center gap-1 text-slate-400 shrink-0">
-            <Tag className="w-3 h-3 text-slate-400" />
+        <div className="flex items-center gap-2 flex-nowrap min-w-0">
+          <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 flex items-center gap-1.5 text-slate-400 shrink-0">
+            <Tag className="w-3.5 h-3.5 text-indigo-500" />
             Category:
           </span>
 
@@ -365,25 +369,29 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </div>
       </div>
 
-      {/* Control Bar */}
+      {/* Control Bar (Floating Card) */}
       <div
-        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2 rounded-lg"
-        style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl"
+        style={{
+          background: 'var(--surface-primary)',
+          boxShadow: 'var(--shadow-card)',
+          border: '1px solid rgba(255, 255, 255, 0.8)',
+        }}
       >
         {/* View toggle (Grid / Agenda) */}
         <div className="flex items-center justify-between gap-2">
           <div
-            className="flex p-0.5 rounded-md"
-            style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}
+            className="flex p-1 rounded-xl"
+            style={{ background: 'var(--surface-secondary)' }}
           >
             <button
               onClick={() => setViewMode('grid')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all"
               style={{
-                background: viewMode === 'grid' ? 'var(--surface-primary)' : 'transparent',
-                color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                background: viewMode === 'grid' ? 'white' : 'transparent',
+                color: viewMode === 'grid' ? 'var(--brand-700)' : 'var(--text-tertiary)',
                 boxShadow: viewMode === 'grid' ? 'var(--shadow-xs)' : 'none',
-                fontWeight: viewMode === 'grid' ? 600 : 500,
+                fontWeight: viewMode === 'grid' ? 700 : 500,
               }}
             >
               <CalendarIcon className="w-4 h-4" style={{ color: viewMode === 'grid' ? 'var(--brand-600)' : 'var(--text-muted)' }} />
@@ -392,12 +400,12 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
             </button>
             <button
               onClick={() => setViewMode('agenda')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all"
               style={{
-                background: viewMode === 'agenda' ? 'var(--surface-primary)' : 'transparent',
-                color: viewMode === 'agenda' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                background: viewMode === 'agenda' ? 'white' : 'transparent',
+                color: viewMode === 'agenda' ? 'var(--brand-700)' : 'var(--text-tertiary)',
                 boxShadow: viewMode === 'agenda' ? 'var(--shadow-xs)' : 'none',
-                fontWeight: viewMode === 'agenda' ? 600 : 500,
+                fontWeight: viewMode === 'agenda' ? 700 : 500,
               }}
             >
               <ListFilter className="w-4 h-4" style={{ color: viewMode === 'agenda' ? 'var(--brand-600)' : 'var(--text-muted)' }} />
@@ -407,13 +415,13 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
           {/* Mobile view sub-toggle (Single Day vs Scrollable Full Week) */}
           {viewMode === 'grid' && (
-            <div className="flex sm:hidden p-0.5 rounded-md" style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)' }}>
+            <div className="flex sm:hidden p-1 rounded-xl" style={{ background: 'var(--surface-secondary)' }}>
               <button
                 onClick={() => setMobileLayout('single-day')}
                 title="Single Day with Swipe"
-                className="p-1.5 rounded-md text-[12px] transition-colors"
+                className="p-1.5 rounded-lg text-[12px] transition-colors"
                 style={{
-                  background: mobileLayout === 'single-day' ? 'var(--surface-primary)' : 'transparent',
+                  background: mobileLayout === 'single-day' ? 'white' : 'transparent',
                   color: mobileLayout === 'single-day' ? 'var(--brand-700)' : 'var(--text-tertiary)',
                   boxShadow: mobileLayout === 'single-day' ? 'var(--shadow-xs)' : 'none',
                 }}
@@ -423,9 +431,9 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               <button
                 onClick={() => setMobileLayout('week-scroll')}
                 title="Full Week Scroll"
-                className="p-1.5 rounded-md text-[12px] transition-colors"
+                className="p-1.5 rounded-lg text-[12px] transition-colors"
                 style={{
-                  background: mobileLayout === 'week-scroll' ? 'var(--surface-primary)' : 'transparent',
+                  background: mobileLayout === 'week-scroll' ? 'white' : 'transparent',
                   color: mobileLayout === 'week-scroll' ? 'var(--brand-700)' : 'var(--text-tertiary)',
                   boxShadow: mobileLayout === 'week-scroll' ? 'var(--shadow-xs)' : 'none',
                 }}
@@ -437,13 +445,14 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </div>
 
         {/* Day filter tabs for Desktop */}
-        <div className="hidden sm:flex items-center gap-1 overflow-x-auto max-w-full">
+        <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto max-w-full">
           <button
             onClick={() => setSelectedDayFilter('ALL')}
-            className="px-2.5 py-1 rounded-md text-[13px] font-medium transition-colors"
+            className="px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all"
             style={{
-              background: selectedDayFilter === 'ALL' ? 'var(--text-primary)' : 'transparent',
+              background: selectedDayFilter === 'ALL' ? 'var(--brand-600)' : 'transparent',
               color: selectedDayFilter === 'ALL' ? 'white' : 'var(--text-secondary)',
+              boxShadow: selectedDayFilter === 'ALL' ? '0 2px 8px -2px rgba(79, 70, 229, 0.4)' : 'none',
             }}
           >
             All
@@ -455,10 +464,10 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               <button
                 key={d.key}
                 onClick={() => setSelectedDayFilter(d.key)}
-                className="px-2.5 py-1 rounded-md text-[13px] font-medium transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all flex items-center gap-1"
                 style={{
                   background: isSelected
-                    ? 'var(--text-primary)'
+                    ? 'var(--brand-600)'
                     : isToday
                       ? 'var(--brand-50)'
                       : 'transparent',
@@ -467,7 +476,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                     : isToday
                       ? 'var(--brand-700)'
                       : 'var(--text-secondary)',
-                  border: isToday && !isSelected ? '1px solid var(--brand-200)' : '1px solid transparent',
+                  boxShadow: isSelected ? '0 2px 8px -2px rgba(79, 70, 229, 0.4)' : 'none',
                 }}
               >
                 <span>{d.short}</span>
@@ -507,7 +516,6 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                       background: isCurrent ? 'var(--brand-600)' : isToday ? 'var(--brand-50)' : 'transparent',
                       color: isCurrent ? 'white' : isToday ? 'var(--brand-700)' : 'var(--text-secondary)',
                       fontWeight: isCurrent || isToday ? 600 : 500,
-                      border: isToday && !isCurrent ? '1px solid var(--brand-200)' : '1px solid transparent',
                     }}
                   >
                     <span>{d.short}</span>
@@ -537,8 +545,12 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         <>
           {/* Desktop full-week grid OR mobile when 'week-scroll' is selected */}
           <div
-            className={`${mobileLayout === 'week-scroll' ? 'block' : 'hidden sm:block'} rounded-lg overflow-hidden`}
-            style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}
+            className={`${mobileLayout === 'week-scroll' ? 'block' : 'hidden sm:block'} rounded-3xl overflow-hidden`}
+            style={{
+              background: 'var(--surface-primary)',
+              boxShadow: 'var(--shadow-card)',
+              border: '1px solid rgba(255, 255, 255, 0.8)',
+            }}
           >
             <div className="overflow-x-auto">
               <div className="min-w-[800px] w-full">
@@ -898,11 +910,11 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
             return (
               <div
                 key={d.key}
-                className="p-3 rounded-lg transition-colors"
+                className="p-4 rounded-3xl transition-all"
                 style={{
                   background: 'var(--surface-primary)',
-                  border: isToday ? '1px solid var(--brand-200)' : '1px solid var(--border-default)',
-                  boxShadow: isToday ? '0 0 0 1px var(--brand-100)' : 'var(--shadow-xs)',
+                  boxShadow: 'var(--shadow-card)',
+                  border: isToday ? '1px solid var(--brand-300)' : '1px solid rgba(255, 255, 255, 0.8)',
                 }}
               >
                 {/* Day header */}
