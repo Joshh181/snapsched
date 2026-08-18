@@ -101,7 +101,7 @@ export function App() {
           />
 
           {/* Dynamic Workspace Canvas */}
-          <main className="flex-1 p-3 md:p-4 w-full animate-fade-in">
+          <main className="flex-1 p-3 md:p-4 pb-16 md:pb-4 w-full animate-fade-in">
           {activeTab === 'timetable' && (
             <TimetableGrid
               classes={classes}
