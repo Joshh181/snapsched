@@ -105,55 +105,96 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="px-3 py-3 md:px-6 md:py-4 flex flex-col gap-3 select-none">
-      {/* Mobile Top Nav: Menu button on the left, Logo on the right */}
-      <div className="flex items-center justify-between w-full lg:hidden">
-        <button
-          onClick={onToggleSidebar}
-          className="p-2 rounded-xl bg-white shadow-xs border border-white/80 hover:bg-slate-50 transition-colors text-slate-600 active:scale-95 transition-transform"
-          aria-label="Open navigation"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+      {/* Top Greeting Row: Sidebar button + Greeting on Left, Logo only on Right */}
+      <div className="flex items-center justify-between gap-3">
+        {/* Left: Sidebar Toggle Button + Greeting */}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 rounded-xl bg-white shadow-xs border border-white/80 hover:bg-slate-50 transition-colors text-slate-600 active:scale-95 transition-transform shrink-0"
+            aria-label="Open navigation"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
 
-        <div className="flex items-center gap-2.5">
+          <div className="min-w-0">
+            <h1 className="text-[20px] md:text-[24px] font-bold tracking-tight text-slate-900 leading-tight">
+              {greeting}
+            </h1>
+            <p className="text-[12px] md:text-[13px] text-slate-500 font-medium truncate mt-0.5">
+              Here's your day at a glance.
+            </p>
+          </div>
+        </div>
+
+        {/* Right (Mobile): Logo only */}
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0 lg:hidden"
+          style={{
+            background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+          }}
+          title="SnapSched"
+        >
+          <BookOpen className="w-4.5 h-4.5" />
+        </div>
+
+        {/* Right (Desktop): Status Pill + Clock + Add Class */}
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+          {/* Live Status Pill */}
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium shadow-xs"
+            style={{
+              background: status.bg,
+              border: `1px solid ${status.border}`,
+              color: status.text,
+            }}
+          >
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${status.pulse ? 'animate-pulse' : ''}`}
+              style={{ backgroundColor: status.dotColor }}
+            />
+            <span className="truncate max-w-[200px]">
+              {currentStatus.details}
+            </span>
+            {status.timeText && (
+              <span
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-lg shrink-0 tabular-nums"
+                style={{ background: status.timeBg, color: status.timeColor }}
+              >
+                {status.timeText}
+              </span>
+            )}
+          </div>
+
+          {/* Live Clock Badge */}
+          <div
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
+          >
+            <Clock className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="font-semibold text-slate-800 tabular-nums">{formattedTime}</span>
+            <span className="text-slate-400">·</span>
+            <span className="text-slate-500">{formattedDate}</span>
+          </div>
+
+          {/* Add Class Action Pill */}
+          <button
+            onClick={onOpenAddModal}
+            className="px-4 py-2 rounded-2xl font-semibold text-[13px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
             style={{
               background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
             }}
           >
-            <BookOpen className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="font-bold text-[15px] tracking-tight text-slate-900 leading-tight">
-              SnapSched
-            </div>
-            {schedule.name && (
-              <div className="text-[11px] text-slate-500 font-medium leading-tight truncate max-w-[150px]">
-                {schedule.name}
-              </div>
-            )}
-          </div>
+            <Plus className="w-4 h-4" />
+            <span>Add Class</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Row: Greeting on Left & Actions/Status on Right */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Left: Clean Greeting & Subtitle */}
-        <div className="min-w-0">
-          <h1 className="text-[22px] md:text-[24px] font-bold tracking-tight text-slate-900">
-            {greeting}
-          </h1>
-          <p className="text-[13px] text-slate-500 font-medium truncate mt-0.5">
-            Here's your day at a glance.
-          </p>
-        </div>
-
-      {/* Right: Floating Status Pill + Time Badge + Add Class Action */}
-      <div className="flex items-center gap-2.5 flex-wrap md:flex-nowrap shrink-0">
+      {/* Mobile Sub-row: Live Status Banner + Add Class Button */}
+      <div className="flex items-center justify-between gap-2.5 lg:hidden">
         {/* Live Status Pill */}
         <div
-          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium shadow-xs"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[12px] sm:text-[13px] font-medium shadow-xs min-w-0 flex-1 sm:flex-initial"
           style={{
             background: status.bg,
             border: `1px solid ${status.border}`,
@@ -164,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-2 h-2 rounded-full shrink-0 ${status.pulse ? 'animate-pulse' : ''}`}
             style={{ backgroundColor: status.dotColor }}
           />
-          <span className="truncate max-w-[200px]">
+          <span className="truncate">
             {currentStatus.details}
           </span>
           {status.timeText && (
@@ -177,20 +218,18 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Live Clock Badge */}
+        {/* Live Clock Badge (visible on sm screen) */}
         <div
-          className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[13px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
+          className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-2xl text-[12px] font-medium text-slate-600 bg-white/80 shadow-xs border border-white/80"
         >
           <Clock className="w-3.5 h-3.5 text-indigo-500" />
           <span className="font-semibold text-slate-800 tabular-nums">{formattedTime}</span>
-          <span className="text-slate-400">·</span>
-          <span className="text-slate-500">{formattedDate}</span>
         </div>
 
         {/* Add Class Action Pill */}
         <button
           onClick={onOpenAddModal}
-          className="px-4 py-2 rounded-2xl font-semibold text-[13px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+          className="px-3.5 py-2 rounded-2xl font-semibold text-[12px] sm:text-[13px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md active:scale-95 shrink-0"
           style={{
             background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
           }}
@@ -199,7 +238,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Add Class</span>
         </button>
       </div>
-    </div>
-  </header>
+    </header>
 );
 };
