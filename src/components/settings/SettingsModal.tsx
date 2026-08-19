@@ -10,8 +10,12 @@ import {
   ShieldCheck,
   Tag,
   Trash2,
+  LogOut,
+  Cloud,
+  HardDrive,
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
+import { useAuth } from '../../contexts/AuthContext';
 import { ScheduleSet, CategoryItem } from '../../types/schedule';
 import { COLOR_PALETTES } from '../../data/sampleSchedules';
 
@@ -32,6 +36,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetToSample,
   onClearAll,
 }) => {
+  const { user, signOut } = useAuth();
   const [studentName, setStudentName] = useState(() => schedule.studentName || 'Josh');
   const [course, setCourse] = useState(() => schedule.course || 'BS Information Technology');
   const [isSavedProfile, setIsSavedProfile] = useState(false);
@@ -128,12 +133,60 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
         <div
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
-          style={{ background: 'var(--status-success-bg)', color: '#065f46', border: '1px solid var(--status-success-border)' }}
+          style={{
+            background: user ? '#eef2ff' : 'var(--status-success-bg)',
+            color: user ? '#4338ca' : '#065f46',
+            border: `1px solid ${user ? '#c7d2fe' : 'var(--status-success-border)'}`,
+          }}
         >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          100% Private (Local Storage)
+          {user ? (
+            <>
+              <Cloud className="w-3.5 h-3.5" />
+              ☁️ Cloud Synced
+            </>
+          ) : (
+            <>
+              <HardDrive className="w-3.5 h-3.5" />
+              Local Storage
+            </>
+          )}
         </div>
       </div>
+
+      {/* Account Section (only for logged-in users) */}
+      {user && (
+        <div
+          className="p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+          style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-[16px] shrink-0"
+              style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)' }}
+            >
+              {(user.user_metadata?.full_name || user.email || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              {user.user_metadata?.full_name && (
+                <div className="font-semibold text-[14px] truncate" style={{ color: 'var(--text-primary)' }}>
+                  {user.user_metadata.full_name}
+                </div>
+              )}
+              <div className="text-[12px] truncate" style={{ color: 'var(--text-secondary)' }}>
+                {user.email}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={signOut}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-red-50"
+            style={{ color: '#dc2626', border: '1px solid #fecaca' }}
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sign Out
+          </button>
+        </div>
+      )}
 
       {/* Grid: Categories & Profile */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

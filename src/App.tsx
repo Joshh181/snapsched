@@ -5,7 +5,10 @@ import {
   Coffee,
   Users2,
   Settings,
+  Loader2,
 } from 'lucide-react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthPage } from './components/auth/AuthPage';
 import { useSchedule } from './hooks/useSchedule';
 import { useVacantPeriods } from './hooks/useVacantPeriods';
 import { storageService } from './services/storageService';
@@ -19,7 +22,8 @@ import { SettingsModal } from './components/settings/SettingsModal';
 import { ClassModal } from './components/timetable/ClassModal';
 import { ClassItem, VacantPeriod } from './types/schedule';
 
-export function App() {
+function AppContent() {
+  const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('timetable');
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
@@ -102,6 +106,28 @@ export function App() {
     setTargetVacantForPlanner(vacant);
     setActiveTab('breaks');
   };
+
+  // Show loading spinner during auth initialization
+  if (authLoading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: 'radial-gradient(ellipse at 12% 8%, #e0e7ff 0%, transparent 42%), radial-gradient(ellipse at 88% 12%, #ede9fe 0%, transparent 40%), #f4f6fc',
+        }}
+      >
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <span className="text-sm text-slate-500 font-medium">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth page if not logged in
+  if (!user) {
+    return <AuthPage />;
+  }
 
   return (
     <div
@@ -214,5 +240,12 @@ export function App() {
   );
 }
 
-export default App;
+export function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
 
+export default App;
