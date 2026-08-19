@@ -30,7 +30,7 @@ export const storageService = {
         // Filter out any legacy sample items if present
         if (parsed.items) {
           parsed.items = parsed.items.filter(
-            (item: any) => !['class-1', 'class-2', 'class-3', 'class-4', 'class-5', 'class-6', 'class-gym-1', 'class-work-1', 'class-study-1'].includes(item.id)
+            (item: any) => !['class-1', 'class-2', 'class-3', 'class-4', 'class-5', 'class-6', 'class-work-1', 'class-study-1'].includes(item.id)
           );
         }
         return parsed;

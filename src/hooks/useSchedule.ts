@@ -252,6 +252,37 @@ export const useSchedule = () => {
     }
   }, [isCloud, allSets]);
 
+  // Update schedule profile (student name, course)
+  const updateScheduleProfile = useCallback(async (studentName: string, course: string) => {
+    const updatedName = studentName.trim();
+    const updatedCourse = course.trim();
+
+    setActiveSchedule((prev) => {
+      const updated = {
+        ...prev,
+        studentName: updatedName,
+        course: updatedCourse,
+      };
+      storageService.saveActiveSchedule(updated);
+      return updated;
+    });
+
+    setAllSets((prev) => {
+      const updatedSets = prev.map((s) =>
+        s.id === activeSchedule.id ? { ...s, studentName: updatedName, course: updatedCourse } : s
+      );
+      storageService.saveAllScheduleSets(updatedSets);
+      return updatedSets;
+    });
+
+    if (isCloud) {
+      await cloud.updateProfile({
+        student_name: updatedName,
+        course: updatedCourse,
+      });
+    }
+  }, [activeSchedule.id, isCloud]);
+
   return {
     schedule: activeSchedule,
     classes: activeSchedule.items,
@@ -269,5 +300,6 @@ export const useSchedule = () => {
     switchScheduleSet,
     createNewScheduleSet,
     resetToSample,
+    updateScheduleProfile,
   };
 };

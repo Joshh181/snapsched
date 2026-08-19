@@ -60,14 +60,17 @@ export async function fetchScheduleSets(): Promise<ScheduleSet[]> {
 
   const classRows = classesError ? [] : (allClasses || []);
 
+  // Fetch user profile
+  const profile = await fetchProfile();
+
   return sets.map((s: any) => ({
     id: s.id,
     name: s.name,
     semester: s.semester || '',
     academicYear: s.academic_year || '',
-    studentName: '', // loaded from profile
-    studentId: '',
-    course: '',
+    studentName: profile?.student_name || '',
+    studentId: profile?.student_id || '',
+    course: profile?.course || '',
     isDefault: s.is_default || false,
     createdAt: s.created_at || new Date().toISOString(),
     items: classRows

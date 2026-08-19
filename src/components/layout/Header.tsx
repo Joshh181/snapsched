@@ -8,6 +8,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { ScheduleSet } from '../../types/schedule';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
   schedule: ScheduleSet;
@@ -30,11 +31,21 @@ export const Header: React.FC<HeaderProps> = ({
   currentStatus,
   currentTime,
 }) => {
-  const studentName = schedule.studentName || 'Josh';
-  const initial = studentName.charAt(0).toUpperCase() || 'J';
+  const { user } = useAuth();
+  const rawName =
+    schedule.studentName?.trim() ||
+    user?.user_metadata?.full_name?.trim() ||
+    user?.user_metadata?.name?.trim() ||
+    (user?.email ? user.email.split('@')[0] : '') ||
+    'Josh';
+
+  // Extract first name for a natural friendly greeting
+  const firstName = rawName.split(' ')[0] || rawName;
+  const initial = (firstName.charAt(0) || 'J').toUpperCase();
 
   const hour = currentTime.getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const fullGreeting = firstName ? `${timeGreeting}, ${firstName}` : timeGreeting;
 
   const formattedDate = currentTime.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -119,7 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="min-w-0">
             <h1 className="text-[20px] md:text-[24px] font-bold tracking-tight text-slate-900 leading-tight">
-              {greeting}
+              {fullGreeting}
             </h1>
             <p className="text-[12px] md:text-[13px] text-slate-500 font-medium truncate mt-0.5">
               Here's your day at a glance.

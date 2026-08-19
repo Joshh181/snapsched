@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { BookOpen, Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { BookOpen, Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-export const AuthPage: React.FC = () => {
+interface AuthPageProps {
+  onBackToLanding?: () => void;
+}
+
+export const AuthPage: React.FC<AuthPageProps> = ({ onBackToLanding }) => {
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -58,7 +62,7 @@ export const AuthPage: React.FC = () => {
     >
       {/* Floating Card */}
       <div
-        className="w-full max-w-[420px] rounded-3xl p-8 sm:p-10 space-y-7"
+        className="w-full max-w-[420px] rounded-3xl p-8 sm:p-10 space-y-7 relative"
         style={{
           background: 'rgba(255, 255, 255, 0.85)',
           backdropFilter: 'blur(20px)',
@@ -66,6 +70,15 @@ export const AuthPage: React.FC = () => {
           boxShadow: '0 8px 40px rgba(79, 70, 229, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
         }}
       >
+        {onBackToLanding && (
+          <button
+            onClick={onBackToLanding}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Home</span>
+          </button>
+        )}
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2.5 mb-3">

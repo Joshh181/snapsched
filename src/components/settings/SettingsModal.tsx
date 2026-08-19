@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   Download,
@@ -26,6 +26,7 @@ interface SettingsModalProps {
   onCreateSet: (name: string, semester: string, academicYear: string) => void;
   onResetToSample: () => void;
   onClearAll?: () => void;
+  onUpdateProfile?: (studentName: string, course: string) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -35,11 +36,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onCreateSet,
   onResetToSample,
   onClearAll,
+  onUpdateProfile,
 }) => {
   const { user, signOut } = useAuth();
   const [studentName, setStudentName] = useState(() => schedule.studentName || 'Josh');
   const [course, setCourse] = useState(() => schedule.course || 'BS Information Technology');
   const [isSavedProfile, setIsSavedProfile] = useState(false);
+
+  // Sync state if schedule changes
+  useEffect(() => {
+    if (schedule.studentName) {
+      setStudentName(schedule.studentName);
+    }
+    if (schedule.course) {
+      setCourse(schedule.course);
+    }
+  }, [schedule.studentName, schedule.course]);
 
   // Category Manager State
   const [categories, setCategories] = useState<CategoryItem[]>(() => storageService.getCategories());
@@ -52,9 +64,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    schedule.studentName = studentName.trim();
-    schedule.course = course.trim();
-    storageService.saveActiveSchedule(schedule);
+    const trimmedName = studentName.trim();
+    const trimmedCourse = course.trim();
+
+    if (onUpdateProfile) {
+      onUpdateProfile(trimmedName, trimmedCourse);
+    } else {
+      schedule.studentName = trimmedName;
+      schedule.course = trimmedCourse;
+      storageService.saveActiveSchedule(schedule);
+    }
+
     setIsSavedProfile(true);
     setTimeout(() => setIsSavedProfile(false), 2000);
   };
@@ -203,7 +223,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </h3>
             </div>
             <p className="text-[12px] mb-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Organize classes, gym, work, and personal schedules into dedicated layers.
+              Organize classes, work, study, and personal schedules into dedicated layers.
             </p>
 
             {/* Existing Categories List */}

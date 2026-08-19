@@ -3,7 +3,7 @@ import { ScheduleSet, FriendSchedule } from '../types/schedule';
 export const COLOR_PALETTES = [
   '#4f46e5', // Indigo (School)
   '#2563eb', // Blue (Work)
-  '#059669', // Emerald (Gym)
+  '#059669', // Emerald (Project/Activity)
   '#d97706', // Amber (Study)
   '#7c3aed', // Purple (Personal)
   '#06b6d4', // Cyan

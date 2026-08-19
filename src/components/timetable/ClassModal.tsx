@@ -221,7 +221,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. IT 311 or GYM LEGS"
+                placeholder="e.g. IT 311 or WORK SHIFT"
                 className={inputClasses}
                 style={{
                   ...inputStyle,
@@ -421,7 +421,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Bring gym gear, lab manual required, etc."
+              placeholder="e.g. Bring lab manual, project requirements, etc."
               className={inputClasses}
               style={inputStyle}
               onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}

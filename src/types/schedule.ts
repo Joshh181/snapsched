@@ -25,16 +25,15 @@ export interface CategoryItem {
 export const DEFAULT_CATEGORIES: CategoryItem[] = [
   { id: 'cat-school', name: 'School', color: '#4f46e5', isDefault: true },
   { id: 'cat-work', name: 'Work', color: '#2563eb', isDefault: true },
-  { id: 'cat-gym', name: 'Gym', color: '#059669', isDefault: true },
   { id: 'cat-study', name: 'Study', color: '#d97706', isDefault: true },
   { id: 'cat-personal', name: 'Personal', color: '#7c3aed', isDefault: true },
 ];
 
 export interface ClassItem {
   id: string;
-  code: string;               // e.g., "IT 311" or "WORK SHIFT" or "GYM LEG DAY"
+  code: string;               // e.g., "IT 311" or "WORK SHIFT" or "STUDY BLOCK"
   name: string;               // e.g., "Web Systems & Technologies 2"
-  category?: string;          // e.g., "School", "Gym", "Work", "Study", "Personal"
+  category?: string;          // e.g., "School", "Work", "Study", "Personal"
   section?: string;           // e.g., "BSIT 3-A"
   instructor?: string;        // e.g., "Prof. R. Santos"
   room: string;               // e.g., "CL 304" / "IT-LAB 2"

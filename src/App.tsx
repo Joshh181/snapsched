@@ -6,9 +6,11 @@ import {
   Users2,
   Settings,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthPage } from './components/auth/AuthPage';
+import { LandingPage } from './components/landing/LandingPage';
 import { useSchedule } from './hooks/useSchedule';
 import { useVacantPeriods } from './hooks/useVacantPeriods';
 import { storageService } from './services/storageService';
@@ -24,6 +26,7 @@ import { ClassItem, VacantPeriod } from './types/schedule';
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
+  const [visitorView, setVisitorView] = useState<'landing' | 'auth'>('landing');
   const [activeTab, setActiveTab] = useState<ActiveTab>('timetable');
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
@@ -47,6 +50,7 @@ function AppContent() {
     switchScheduleSet,
     createNewScheduleSet,
     resetToSample,
+    updateScheduleProfile,
   } = useSchedule();
 
   const currentCategoryClasses = classes.filter(
@@ -124,9 +128,18 @@ function AppContent() {
     );
   }
 
-  // Show auth page if not logged in
-  if (!user) {
-    return <AuthPage />;
+  // Unauthenticated Visitor Flow: Landing Page -> Auth
+  if (!user && visitorView === 'landing') {
+    return (
+      <LandingPage
+        onGetStarted={() => setVisitorView('auth')}
+        onSignIn={() => setVisitorView('auth')}
+      />
+    );
+  }
+
+  if (!user && visitorView === 'auth') {
+    return <AuthPage onBackToLanding={() => setVisitorView('landing')} />;
   }
 
   return (
@@ -220,6 +233,7 @@ function AppContent() {
                   onCreateSet={createNewScheduleSet}
                   onResetToSample={resetToSample}
                   onClearAll={clearAllClasses}
+                  onUpdateProfile={updateScheduleProfile}
                 />
               )}
             </div>
