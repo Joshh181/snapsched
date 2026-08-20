@@ -322,10 +322,10 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   onClearCategory?.(activeCategoryName);
                 }
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 transition-colors shadow-2xs active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium text-red-500 bg-red-50/90 hover:bg-red-100 transition-colors active:scale-95 shrink-0"
               title={`Clear all ${activeCategoryName} items`}
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3.5 h-3.5 text-red-500 shrink-0" />
               <span>Clear {activeCategoryName} ({filteredClasses.length})</span>
             </button>
           ) : (
@@ -342,12 +342,12 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                 onChange={(e) => setNewCatName(e.target.value)}
                 placeholder="Category name..."
                 autoFocus
-                className="px-2.5 py-1 text-[11px] rounded-lg border focus:outline-none w-28"
+                className="px-2.5 py-1 text-[11px] rounded-full border focus:outline-none w-28"
                 style={{ background: 'var(--surface-secondary)', borderColor: 'var(--brand-400)', color: 'var(--text-primary)' }}
               />
               <button
                 type="submit"
-                className="p-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-[11px]"
+                className="p-1 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 text-[11px]"
                 title="Save Category"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -355,7 +355,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddingCategory(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-gray-100"
+                className="p-1 rounded-full text-slate-400 hover:bg-gray-100"
                 title="Cancel"
               >
                 <X className="w-3.5 h-3.5" />
@@ -364,7 +364,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
           ) : (
             <button
               onClick={() => setIsAddingCategory(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 transition-colors shadow-2xs active:scale-95"
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-medium text-indigo-600 bg-indigo-50/90 hover:bg-indigo-100 transition-colors active:scale-95 shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Category</span>
