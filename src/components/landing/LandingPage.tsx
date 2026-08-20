@@ -134,9 +134,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-sm transition-transform hover:scale-105"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-sm transition-transform hover:scale-105 shrink-0"
               style={{
                 background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
                 boxShadow: '0 4px 14px -2px rgba(79, 70, 229, 0.4)',
@@ -144,14 +144,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               <BookOpen className="w-5 h-5" />
             </div>
-            <div>
-              <span className="font-extrabold text-[19px] tracking-tight text-slate-900 leading-none block">
-                SnapSched
-              </span>
-              <span className="text-[11px] font-semibold text-indigo-600 tracking-wide uppercase">
-                Smart Timetable & Routines
-              </span>
-            </div>
+            <span className="font-extrabold text-[18px] sm:text-[20px] tracking-tight text-slate-900 leading-none">
+              SnapSched
+            </span>
           </div>
 
           {/* Center Navigation Links (Desktop) */}
@@ -171,22 +166,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Right Action CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onSignIn}
-              className="px-4 py-2 text-[14px] font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+              className="px-2.5 sm:px-4 py-2 text-[13px] sm:text-[14px] font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
             >
               Sign In
             </button>
             <button
               onClick={onGetStarted}
-              className="px-4.5 py-2.5 rounded-xl font-semibold text-[13.5px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              className="px-3.5 sm:px-4.5 py-2 sm:py-2.5 rounded-xl font-semibold text-[12.5px] sm:text-[13.5px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
               style={{
                 background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
               }}
             >
               <span>Get Started</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
@@ -220,7 +215,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   boxShadow: '0 8px 24px -4px rgba(79, 70, 229, 0.45)',
                 }}
               >
-                <span>Start Free with Cloud Sync</span>
+                <span>Scan Your Schedule Free</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
