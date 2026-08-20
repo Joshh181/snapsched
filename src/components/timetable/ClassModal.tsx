@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, User, Check, Tag } from 'lucide-react';
+import { X, MapPin, User, Check, Tag, Trash2 } from 'lucide-react';
 import { ClassItem, DayAbbreviation, DAYS_OF_WEEK, CategoryItem } from '../../types/schedule';
 import { COLOR_PALETTES } from '../../data/sampleSchedules';
 import { storageService } from '../../services/storageService';
@@ -9,6 +9,7 @@ interface ClassModalProps {
   onClose: () => void;
   onSave: (classData: Omit<ClassItem, 'id'>) => void;
   onUpdate?: (id: string, classData: Partial<ClassItem>) => void;
+  onDelete?: (id: string) => void;
   initialData?: ClassItem | null;
   activeCategory?: string;
 }
@@ -18,6 +19,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
   onClose,
   onSave,
   onUpdate,
+  onDelete,
   initialData,
   activeCategory = 'School',
 }) => {
@@ -169,14 +171,32 @@ export const ClassModal: React.FC<ClassModalProps> = ({
               {initialData ? 'Edit Schedule Item' : 'Add New Schedule Item'}
             </h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
-            style={{ color: 'var(--text-muted)' }}
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {initialData && onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Delete ${initialData.code || 'this schedule item'} - ${initialData.name}?`)) {
+                    onDelete(initialData.id);
+                    onClose();
+                  }
+                }}
+                className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                title="Delete Schedule Item"
+                aria-label="Delete Schedule Item"
+              >
+                <Trash2 className="w-4.5 h-4.5" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+              style={{ color: 'var(--text-muted)' }}
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Form */}
@@ -430,22 +450,42 @@ export const ClassModal: React.FC<ClassModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-3 flex items-center justify-end gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-100"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg text-[13px] font-medium text-white transition-colors hover:opacity-90"
-              style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
-            >
-              {initialData ? 'Save Changes' : 'Add Item'}
-            </button>
+          <div className="pt-3 flex items-center justify-between gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            {initialData && onDelete ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Delete ${initialData.code || 'this schedule item'} - ${initialData.name}?`)) {
+                    onDelete(initialData.id);
+                    onClose();
+                  }
+                }}
+                className="px-3.5 py-2 rounded-lg text-[13px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Item</span>
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-100"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-lg text-[13px] font-medium text-white transition-colors hover:opacity-90"
+                style={{ background: 'var(--brand-600)', boxShadow: 'var(--shadow-xs)' }}
+              >
+                {initialData ? 'Save Changes' : 'Add Item'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

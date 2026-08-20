@@ -265,14 +265,14 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     <div className="space-y-4 select-none">
       {/* ── Category Pill Bar (Floating Card) ── */}
       <div
-        className="p-2.5 sm:p-3 rounded-3xl flex items-center justify-between gap-2 sm:gap-3 overflow-x-auto"
+        className="p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3"
         style={{
           background: 'var(--surface-primary)',
           boxShadow: 'var(--shadow-card)',
           border: '1px solid rgba(255, 255, 255, 0.8)',
         }}
       >
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 min-w-0">
           <span className="text-[11px] font-bold uppercase tracking-wider px-1.5 sm:px-2.5 py-1 flex items-center gap-1.5 text-slate-400 shrink-0">
             <Tag className="w-3.5 h-3.5 text-indigo-500" />
             <span className="hidden sm:inline">Category:</span>
@@ -287,7 +287,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               <button
                 key={cat.id}
                 onClick={() => handleSelectCat(cat.name)}
-                className="px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all flex items-center gap-1.5 shrink-0"
+                className="px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all flex items-center gap-1.5 shrink-0 active:scale-95"
                 style={{
                   background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
                   color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
@@ -314,20 +314,24 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </div>
 
         {/* Category Actions: Clear Category & Add Category */}
-        <div className="shrink-0 pl-2 border-l flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
-          {filteredClasses.length > 0 && (
+        <div className="shrink-0 flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l sm:pl-2.5" style={{ borderColor: 'var(--border-subtle)' }}>
+          {filteredClasses.length > 0 ? (
             <button
               onClick={() => {
                 if (confirm(`Are you sure you want to delete all ${filteredClasses.length} item(s) in "${activeCategoryName}"?`)) {
                   onClearCategory?.(activeCategoryName);
                 }
               }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 transition-colors shadow-2xs active:scale-95"
               title={`Clear all ${activeCategoryName} items`}
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Clear {activeCategoryName} ({filteredClasses.length})</span>
             </button>
+          ) : (
+            <span className="text-[11px] text-slate-400 font-medium sm:hidden">
+              0 {activeCategoryName} items
+            </span>
           )}
 
           {isAddingCategory ? (
@@ -338,12 +342,12 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                 onChange={(e) => setNewCatName(e.target.value)}
                 placeholder="Category name..."
                 autoFocus
-                className="px-2 py-1 text-[11px] rounded border focus:outline-none w-28"
+                className="px-2.5 py-1 text-[11px] rounded-lg border focus:outline-none w-28"
                 style={{ background: 'var(--surface-secondary)', borderColor: 'var(--brand-400)', color: 'var(--text-primary)' }}
               />
               <button
                 type="submit"
-                className="p-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-[11px]"
+                className="p-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-[11px]"
                 title="Save Category"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -351,7 +355,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddingCategory(false)}
-                className="p-1 rounded text-slate-400 hover:bg-gray-100"
+                className="p-1 rounded-lg text-slate-400 hover:bg-gray-100"
                 title="Cancel"
               >
                 <X className="w-3.5 h-3.5" />
@@ -360,10 +364,10 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
           ) : (
             <button
               onClick={() => setIsAddingCategory(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 transition-colors shadow-2xs active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New</span>
+              <span>New Category</span>
             </button>
           )}
         </div>
@@ -1023,16 +1027,35 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                               </div>
                             </div>
 
-                            <div
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] tabular-nums shrink-0"
-                              style={{
-                                background: 'var(--surface-primary)',
-                                border: '1px solid var(--border-subtle)',
-                                color: 'var(--text-secondary)',
-                              }}
-                            >
-                              <Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-                              <span>{format12Hour(item.startTime)} – {format12Hour(item.endTime)}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] tabular-nums"
+                                style={{
+                                  background: 'var(--surface-primary)',
+                                  border: '1px solid var(--border-subtle)',
+                                  color: 'var(--text-secondary)',
+                                }}
+                              >
+                                <Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                                <span>{format12Hour(item.startTime)} – {format12Hour(item.endTime)}</span>
+                              </div>
+
+                              {!isBatchSelectMode && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`Delete ${item.code} - ${item.name}?`)) {
+                                      onDeleteClass(item.id);
+                                    }
+                                  }}
+                                  title="Delete Item"
+                                  aria-label="Delete Item"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
 

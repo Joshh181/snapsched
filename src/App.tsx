@@ -246,6 +246,7 @@ function AppContent() {
           onClose={() => setIsClassModalOpen(false)}
           onSave={addClassItem}
           onUpdate={updateClassItem}
+          onDelete={deleteClassItem}
           initialData={editingClass}
           activeCategory={selectedCategory}
         />
