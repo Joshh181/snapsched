@@ -22,7 +22,10 @@ import {
   Share2,
   Flame,
   FileSpreadsheet,
+  ArrowUp,
 } from 'lucide-react';
+import { LegalModal, LegalTab } from '../legal/LegalModal';
+import { ContactModal } from '../support/ContactModal';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -34,31 +37,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onSignIn,
 }) => {
   const [activeFeatureTab, setActiveFeatureTab] = useState<'scanner' | 'breaks' | 'compare' | 'categories'>('scanner');
-  const [isFeatureAutoPaused, setIsFeatureAutoPaused] = useState(false);
+  const [selectedHeroDay, setSelectedHeroDay] = useState<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat'>('Mon');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [scrolled, setScrolled] = useState(false);
   const [simulatedScanStep, setSimulatedScanStep] = useState(0);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>('terms');
+  const [contactModalOpen, setContactModalOpen] = useState(false);
 
-  const FEATURE_TABS: Array<'scanner' | 'breaks' | 'compare' | 'categories'> = [
-    'scanner',
-    'breaks',
-    'compare',
-    'categories',
-  ];
-
-  // Auto-cycle between feature tabs when user is not hovering/interacting
-  useEffect(() => {
-    if (isFeatureAutoPaused) return;
-
-    const interval = setInterval(() => {
-      setActiveFeatureTab((prev) => {
-        const nextIndex = (FEATURE_TABS.indexOf(prev) + 1) % FEATURE_TABS.length;
-        return FEATURE_TABS[nextIndex];
-      });
-    }, 4500);
-
-    return () => clearInterval(interval);
-  }, [isFeatureAutoPaused]);
+  const openLegal = (tab: LegalTab) => {
+    setLegalTab(tab);
+    setLegalModalOpen(true);
+  };
 
   // Auto-cycle simulation steps for scanner tab preview
   useEffect(() => {
@@ -87,12 +77,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     { icon: '👥', name: 'Team & Friend Match', desc: 'Common Free Schedules', color: '#7c3aed' },
   ];
 
-  const sampleClasses = [
-    { code: 'IT 311', name: 'Web Systems & Technologies 2', time: '07:30 - 09:00', room: 'IT-LAB 2', color: '#4f46e5', day: 'M-W' },
-    { code: 'CS 312', name: 'Information Assurance & Security', time: '09:00 - 10:30', room: 'CL 304', color: '#059669', day: 'M-W' },
-    { code: 'GE 108', name: 'Ethics in the Modern World', time: '13:00 - 14:30', room: 'LH 101', color: '#d97706', day: 'T-TH' },
-    { code: 'PE 3', name: 'Individual & Dual Sports', time: '15:00 - 17:00', room: 'COURT 1', color: '#7c3aed', day: 'F' },
-  ];
+  const sampleClassesByDay: Record<string, Array<{ code: string; name: string; time: string; room: string; color: string; day: string }>> = {
+    Mon: [
+      { code: 'IT 311', name: 'Web Systems & Technologies 2', time: '07:30 - 09:00', room: 'IT-LAB 2', color: '#4f46e5', day: 'M-W' },
+      { code: 'CS 312', name: 'Information Assurance & Security', time: '09:00 - 10:30', room: 'CL 304', color: '#059669', day: 'M-W' },
+      { code: 'GE 108', name: 'Ethics in the Modern World', time: '13:00 - 14:30', room: 'LH 101', color: '#d97706', day: 'M-W' },
+    ],
+    Tue: [
+      { code: 'IT 314', name: 'Systems Integration & Architecture', time: '08:30 - 10:00', room: 'CL 201', color: '#2563eb', day: 'T-TH' },
+      { code: 'GE 108', name: 'Ethics in the Modern World', time: '13:00 - 14:30', room: 'LH 101', color: '#d97706', day: 'T-TH' },
+    ],
+    Wed: [
+      { code: 'IT 311', name: 'Web Systems & Technologies 2', time: '07:30 - 09:00', room: 'IT-LAB 2', color: '#4f46e5', day: 'M-W' },
+      { code: 'CS 312', name: 'Information Assurance & Security', time: '09:00 - 10:30', room: 'CL 304', color: '#059669', day: 'M-W' },
+      { code: 'GE 108', name: 'Ethics in the Modern World', time: '13:00 - 14:30', room: 'LH 101', color: '#d97706', day: 'M-W' },
+    ],
+    Thu: [
+      { code: 'IT 314', name: 'Systems Integration & Architecture', time: '08:30 - 10:00', room: 'CL 201', color: '#2563eb', day: 'T-TH' },
+      { code: 'CS 315', name: 'Mobile Application Development', time: '14:30 - 16:30', room: 'IT-LAB 3', color: '#0891b2', day: 'TH' },
+    ],
+    Fri: [
+      { code: 'PE 3', name: 'Individual & Dual Sports', time: '13:00 - 15:00', room: 'COURT 1', color: '#7c3aed', day: 'FRI' },
+      { code: 'IT 311 Lab', name: 'Web Systems Hands-On Lab', time: '15:30 - 17:30', room: 'IT-LAB 2', color: '#4f46e5', day: 'FRI' },
+    ],
+    Sat: [
+      { code: 'CAP 401', name: 'Capstone Project & Thesis 1', time: '09:00 - 12:00', room: 'SEMINAR 2', color: '#ea580c', day: 'SAT' },
+    ],
+  };
+
+  const vacantGapsByDay: Record<string, { duration: string; window: string; action: string }> = {
+    Mon: { duration: '2.5 hrs Vacant', window: '10:30 AM – 1:00 PM', action: 'Plan Study' },
+    Tue: { duration: '3.0 hrs Vacant', window: '10:00 AM – 1:00 PM', action: 'Focus Sprint' },
+    Wed: { duration: '2.5 hrs Vacant', window: '10:30 AM – 1:00 PM', action: 'Plan Study' },
+    Thu: { duration: '4.5 hrs Vacant', window: '10:00 AM – 2:30 PM', action: 'Group Review' },
+    Fri: { duration: '2.0 hrs Vacant', window: '10:00 AM – 12:00 PM', action: 'Lunch & Gym' },
+    Sat: { duration: 'Afternoon Free', window: '12:00 PM Onwards', action: 'Relax & Chill' },
+  };
 
   const faqs = [
     {
@@ -121,7 +141,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div
       className="min-h-screen relative selection:bg-indigo-500 selection:text-white"
       style={{
-        background: 'radial-gradient(ellipse at 15% 10%, #e0e7ff 0%, transparent 45%), radial-gradient(ellipse at 85% 15%, #ede9fe 0%, transparent 40%), #f4f6fc',
+        background: 'radial-gradient(ellipse at 15% 0%, #e0e7ff 0%, transparent 40%), radial-gradient(ellipse at 85% 12%, #ede9fe 0%, transparent 35%), radial-gradient(ellipse at 10% 42%, #e0e7ff 0%, transparent 40%), radial-gradient(ellipse at 90% 68%, #ede9fe 0%, transparent 35%), radial-gradient(ellipse at 25% 92%, #e0e7ff 0%, transparent 40%), #f4f6fc',
         color: '#111827',
       }}
     >
@@ -188,7 +208,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </nav>
 
       {/* ── 2. HERO SECTION ── */}
-      <section className="relative pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
+      <section className="relative pt-24 sm:pt-28 pb-8 sm:pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left Column: Headlines & CTAs */}
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
@@ -272,26 +292,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* Day Selector Pills */}
-              <div className="flex items-center gap-1.5 mb-4 p-1 bg-slate-50 rounded-xl">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
-                  <div
-                    key={d}
-                    className={`flex-1 text-center py-1.5 rounded-lg text-[11px] font-bold transition-all ${i === 0
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+              <div className="flex items-center gap-1.5 mb-4 p-1 bg-slate-100/90 rounded-xl">
+                {(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const).map((d) => {
+                  const isSelected = selectedHeroDay === d;
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setSelectedHeroDay(d)}
+                      className={`flex-1 text-center py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-xs scale-105'
+                          : 'text-slate-500 hover:text-slate-900 hover:bg-white/70'
                       }`}
-                  >
-                    {d}
-                  </div>
-                ))}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Mini Classes Timeline Mock */}
-              <div className="space-y-2.5">
-                {sampleClasses.map((cls, idx) => (
+              <div className="space-y-2.5 min-h-[220px]">
+                {(sampleClassesByDay[selectedHeroDay] || []).map((cls, idx) => (
                   <div
                     key={cls.code}
-                    className="p-3 rounded-2xl flex items-center justify-between border transition-all hover:translate-x-1"
+                    className="p-3 rounded-2xl flex items-center justify-between border transition-all hover:translate-x-1 duration-200"
                     style={{
                       backgroundColor: idx === 0 ? '#f5f3ff' : '#ffffff',
                       borderColor: idx === 0 ? '#c7d2fe' : '#e2e8f0',
@@ -323,21 +349,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 ))}
 
                 {/* Detected Vacant Period Banner in Mockup */}
-                <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-2 text-amber-900 font-medium">
-                    <Coffee className="w-3.5 h-3.5 text-amber-600" />
-                    <span>2.5 hrs Vacant (10:30 AM – 1:00 PM)</span>
+                {vacantGapsByDay[selectedHeroDay] && (
+                  <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-between text-[11px] transition-all">
+                    <div className="flex items-center gap-2 text-amber-900 font-medium">
+                      <Coffee className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>
+                        {vacantGapsByDay[selectedHeroDay].duration} ({vacantGapsByDay[selectedHeroDay].window})
+                      </span>
+                    </div>
+                    <span className="font-bold text-amber-700 underline cursor-pointer hover:text-amber-900">
+                      {vacantGapsByDay[selectedHeroDay].action}
+                    </span>
                   </div>
-                  <span className="font-bold text-amber-700 underline cursor-pointer">Plan Study</span>
-                </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* Lifestyle & Routine Badges Ribbon */}
-        <div className="mt-16 pt-10 border-t border-slate-200/60 text-center">
-          <p className="text-[12px] sm:text-[12.5px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+        <div className="mt-10 pt-2 text-center">
+          <p className="text-[12px] sm:text-[12.5px] font-bold text-slate-400 uppercase tracking-widest mb-4">
             Designed for every weekly routine — Classes, Work Shifts, Study & Daily Life
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 max-w-6xl mx-auto">
@@ -362,26 +394,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 3. INTERACTIVE PRODUCT SHOWCASE (TAB SWITCHER) ── */}
-      <section id="features" className="py-20 bg-white/70 backdrop-blur-sm border-y border-slate-200/80">
+      <section id="features" className="py-10 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
+          <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-8">
             <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
               Engineered For Dynamic Weekly Routines
             </span>
             <h2 className="text-[32px] sm:text-[40px] font-black tracking-tight text-slate-900">
               Built to replace chaotic group chats, rosters & spreadsheets
             </h2>
-            <p className="text-[16px] text-slate-600 font-medium">
-              Every tool in SnapSched gives you total clarity over your classes, shifts, study blocks, and free time.
-            </p>
           </div>
 
           {/* Feature Tab Buttons */}
-          <div
-            className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-10"
-            onMouseEnter={() => setIsFeatureAutoPaused(true)}
-            onMouseLeave={() => setIsFeatureAutoPaused(false)}
-          >
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-10">
             {[
               { id: 'scanner', label: 'AI COR Scanner', icon: ScanLine },
               { id: 'breaks', label: 'Vacant Study Planner', icon: Coffee },
@@ -393,10 +418,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               return (
                 <button
                   key={tab.id}
-                  onClick={() => {
-                    setActiveFeatureTab(tab.id as any);
-                    setIsFeatureAutoPaused(true);
-                  }}
+                  onClick={() => setActiveFeatureTab(tab.id as any)}
                   className={`relative flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-[13.5px] transition-all ${isActive
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]'
                       : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
@@ -404,7 +426,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
-                  {isActive && !isFeatureAutoPaused && (
+                  {isActive && (
                     <span className="absolute bottom-1 left-4 right-4 h-0.5 bg-white/50 rounded-full animate-pulse" />
                   )}
                 </button>
@@ -414,45 +436,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Interactive Feature Display Stage */}
           <div
-            className="bg-slate-900 rounded-3xl p-6 sm:p-10 text-white shadow-2xl relative overflow-hidden border border-slate-800"
-            onMouseEnter={() => setIsFeatureAutoPaused(true)}
-            onMouseLeave={() => setIsFeatureAutoPaused(false)}
+            className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 sm:p-10 text-slate-900 shadow-xl relative overflow-hidden border border-slate-200/90"
+            style={{
+              boxShadow: '0 20px 50px -12px rgba(79, 70, 229, 0.1), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+            }}
           >
-            {/* Ambient Background Lights */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-violet-500/15 rounded-full blur-3xl pointer-events-none" />
-
             {/* TAB 1: AI COR Scanner Live Motion Simulator */}
             {activeFeatureTab === 'scanner' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center animate-fade-in">
                 <div className="lg:col-span-5 space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 text-xs font-semibold">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-100">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                     Live OCR Motion Simulator
                   </div>
-                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-white">
+                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-slate-900">
                     Scan your registration slip. Skip hours of typing.
                   </h3>
-                  <p className="text-slate-300 text-[15px] leading-relaxed">
+                  <p className="text-slate-600 text-[15px] leading-relaxed">
                     Watch Gemini Vision AI scan official university registration forms, study load slips, or screen captures and instantly transform them into a color-coded timetable.
                   </p>
-                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-300">
+                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-700">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Parses complex day codes (MW, TTH, FS, SAT)</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Converts 12h/24h timestamps into time grid coordinates</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Assigns vibrant subject colors automatically</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="lg:col-span-7 bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-800 relative overflow-hidden shadow-inner">
+                <div className="lg:col-span-7 bg-slate-950/95 rounded-2xl p-5 sm:p-6 border border-slate-800 relative overflow-hidden shadow-2xl text-white">
                   {/* Scanner Device Shell Header */}
                   <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-800 text-xs">
                     <div className="flex items-center gap-2">
@@ -562,33 +581,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeFeatureTab === 'breaks' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center animate-fade-in">
                 <div className="lg:col-span-5 space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-semibold">
-                    <Coffee className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
+                    <Coffee className="w-3.5 h-3.5 text-amber-600" />
                     Gap Detection & Focus Timer
                   </div>
-                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-white">
+                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-slate-900">
                     Turn dead hours between classes into effortless productivity.
                   </h3>
-                  <p className="text-slate-300 text-[15px] leading-relaxed">
+                  <p className="text-slate-600 text-[15px] leading-relaxed">
                     SnapSched computes every vacant gap across your week and automatically recommends structured Pomodoro study sessions, coffee breaks, or social catch-ups.
                   </p>
-                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-300">
+                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-700">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Instant gap detection between class dismissal & start</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>One-click Pomodoro focus session planner</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Never ask "what should I do during my vacant?" again</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="lg:col-span-7 bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-4 shadow-inner">
+                <div className="lg:col-span-7 bg-slate-950/95 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-4 shadow-2xl text-white">
                   {/* Timeline Bar Mock with Animated Pulse Gap */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
@@ -661,33 +680,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeFeatureTab === 'compare' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center animate-fade-in">
                 <div className="lg:col-span-5 space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-semibold">
-                    <Users2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
+                    <Users2 className="w-3.5 h-3.5 text-emerald-600" />
                     Multi-Schedule Overlay
                   </div>
-                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-white">
+                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-slate-900">
                     Find common free time with friends in one second.
                   </h3>
-                  <p className="text-slate-300 text-[15px] leading-relaxed">
+                  <p className="text-slate-600 text-[15px] leading-relaxed">
                     Compare study loads with blockmates, study buddies, or team members. SnapSched calculates overlapping vacant slots so everyone knows when they can meet up.
                   </p>
-                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-300">
+                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-700">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Side-by-side timetable slot comparison</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Highlights mutual vacant windows instantly</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Export and share schedule links with 1 click</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="lg:col-span-7 bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-3.5 shadow-inner">
+                <div className="lg:col-span-7 bg-slate-950/95 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-3.5 shadow-2xl text-white">
                   <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800 text-slate-400">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -737,33 +756,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeFeatureTab === 'categories' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center animate-fade-in">
                 <div className="lg:col-span-5 space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-violet-500/20 text-violet-300 text-xs font-semibold">
-                    <Layers className="w-3.5 h-3.5 text-violet-400" />
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-violet-50 text-violet-800 text-xs font-semibold border border-violet-200">
+                    <Layers className="w-3.5 h-3.5 text-violet-600" />
                     Layered Life Organizer
                   </div>
-                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-white">
+                  <h3 className="text-[26px] sm:text-[30px] font-black leading-tight text-slate-900">
                     One unified calendar for classes, shifts, study & personal tasks.
                   </h3>
-                  <p className="text-slate-300 text-[15px] leading-relaxed">
+                  <p className="text-slate-600 text-[15px] leading-relaxed">
                     Don't juggle three different calendar apps. Toggle between your School classes, Part-Time Work shifts, Study blocks, and Personal errands with dedicated layer filters.
                   </p>
-                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-300">
+                  <div className="space-y-2.5 pt-2 text-[13px] text-slate-700">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Independent toggle filters on the timetable grid</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Custom color tags per routine type</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="w-5 h-5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 flex items-center justify-center text-xs font-bold">✓</span>
                       <span>Calculates weekly units and shift hours</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="lg:col-span-7 bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-4 shadow-inner">
+                <div className="lg:col-span-7 bg-slate-950/95 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-4 shadow-2xl text-white">
                   {/* Category Layer Filter Pills */}
                   <div className="flex flex-wrap gap-2">
                     {[
@@ -823,68 +842,82 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 4. 3-STEP WORKFLOW ── */}
-      <section id="how-it-works" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
+      <section id="how-it-works" className="py-10 sm:py-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-10">
           <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
             Lightning Fast Setup
           </span>
           <h2 className="text-[32px] sm:text-[40px] font-black tracking-tight text-slate-900">
             From COR paper slip to synced schedule in 10 seconds
           </h2>
-          <p className="text-[16px] text-slate-600 font-medium">
-            Three dead-simple steps to modernize your entire college timetable.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-          {/* Step 1 */}
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm">
-              1
-            </div>
-            <h3 className="font-extrabold text-[20px] text-slate-900">Snap or Upload</h3>
-            <p className="text-slate-600 text-[14px] leading-relaxed">
-              Take a photo of your Certificate of Registration, study slip, or export it as PDF/PNG from your university portal.
-            </p>
-          </div>
+        <div className="relative">
+          {/* Connector Track behind steps on desktop */}
+          <div className="hidden md:block absolute top-14 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-indigo-200 via-indigo-400 to-indigo-200 z-0" />
 
-          {/* Step 2 */}
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm">
-              2
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+            {/* Step 1 */}
+            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm group-hover:scale-105 transition-transform">
+                  1
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <ScanLine className="w-5 h-5" />
+                </div>
+              </div>
+              <h3 className="font-extrabold text-[20px] text-slate-900">Snap or Upload</h3>
+              <p className="text-slate-600 text-[14px] leading-relaxed">
+                Take a photo of your Certificate of Registration, study slip, or export it as PDF/PNG from your university portal.
+              </p>
             </div>
-            <h3 className="font-extrabold text-[20px] text-slate-900">AI Auto-Extraction</h3>
-            <p className="text-slate-600 text-[14px] leading-relaxed">
-              Gemini Vision AI parses your course codes, instructors, room numbers, and schedule times in seconds with high accuracy.
-            </p>
-          </div>
 
-          {/* Step 3 */}
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm">
-              3
+            {/* Step 2 */}
+            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm group-hover:scale-105 transition-transform">
+                  2
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+              </div>
+              <h3 className="font-extrabold text-[20px] text-slate-900">AI Auto-Extraction</h3>
+              <p className="text-slate-600 text-[14px] leading-relaxed">
+                Gemini Vision AI parses your course codes, instructors, room numbers, and schedule times in seconds with high accuracy.
+              </p>
             </div>
-            <h3 className="font-extrabold text-[20px] text-slate-900">Sync & Go</h3>
-            <p className="text-slate-600 text-[14px] leading-relaxed">
-              Review your subjects, tweak colors, and your timetable is instantly ready on mobile, tablet, and desktop.
-            </p>
+
+            {/* Step 3 */}
+            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm group-hover:scale-105 transition-transform">
+                  3
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Calendar className="w-5 h-5" />
+                </div>
+              </div>
+              <h3 className="font-extrabold text-[20px] text-slate-900">Sync & Go</h3>
+              <p className="text-slate-600 text-[14px] leading-relaxed">
+                Review your subjects, tweak colors, and your timetable is instantly ready on mobile, tablet, and desktop.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ── 5. COMPARISON MATRIX ── */}
-      <section id="comparison" className="py-20 bg-slate-50/70 border-y border-slate-200/80">
+      <section id="comparison" className="py-10 sm:py-14">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
+          <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-10">
             <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
               Why Students Switch
             </span>
             <h2 className="text-[32px] sm:text-[40px] font-black tracking-tight text-slate-900">
               SnapSched vs. The Old Way
             </h2>
-            <p className="text-[16px] text-slate-600 font-medium">
-              See why spreadsheets and screenshot gallery folders are a thing of the past.
-            </p>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
@@ -893,50 +926,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
                     <th className="p-4 sm:p-5 font-bold text-slate-700 text-[14px]">Feature</th>
-                    <th className="p-4 sm:p-5 font-bold text-indigo-600 text-[15px] bg-indigo-50/50">
-                      ✨ SnapSched
+                    <th className="p-4 sm:p-5 font-bold text-indigo-600 text-[15px] bg-indigo-50/70 border-x border-indigo-100">
+                      <div className="flex items-center gap-2">
+                        <span>SnapSched</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-xs uppercase tracking-wide">
+                          Recommended
+                        </span>
+                      </div>
                     </th>
                     <th className="p-4 sm:p-5 font-semibold text-slate-500 text-[13px]">Excel / Sheets</th>
                     <th className="p-4 sm:p-5 font-semibold text-slate-500 text-[13px]">Phone Gallery Notes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[13.5px]">
-                  <tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4 sm:p-5 font-semibold text-slate-800">Automatic OCR from COR</td>
-                    <td className="p-4 sm:p-5 bg-indigo-50/20 font-bold text-emerald-600">
-                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> 10 Seconds</div>
+                    <td className="p-4 sm:p-5 bg-indigo-50/30 font-bold text-emerald-600 border-x border-indigo-100">
+                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 10 Seconds</div>
                     </td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ Manual typing</td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ Static image</td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4 sm:p-5 font-semibold text-slate-800">Live "In-Class" Status Tracker</td>
-                    <td className="p-4 sm:p-5 bg-indigo-50/20 font-bold text-emerald-600">
-                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Real-time</div>
+                    <td className="p-4 sm:p-5 bg-indigo-50/30 font-bold text-emerald-600 border-x border-indigo-100">
+                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Real-time</div>
                     </td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ None</td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ None</td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4 sm:p-5 font-semibold text-slate-800">Automatic Vacant Gap Finder</td>
-                    <td className="p-4 sm:p-5 bg-indigo-50/20 font-bold text-emerald-600">
-                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Built-in</div>
+                    <td className="p-4 sm:p-5 bg-indigo-50/30 font-bold text-emerald-600 border-x border-indigo-100">
+                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Built-in</div>
                     </td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ Manual math</td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ None</td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4 sm:p-5 font-semibold text-slate-800">Compare with Friends' Schedules</td>
-                    <td className="p-4 sm:p-5 bg-indigo-50/20 font-bold text-emerald-600">
-                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> 1-Click Match</div>
+                    <td className="p-4 sm:p-5 bg-indigo-50/30 font-bold text-emerald-600 border-x border-indigo-100">
+                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 1-Click Match</div>
                     </td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ Clunky</td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ Group chat spam</td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4 sm:p-5 font-semibold text-slate-800">Multi-Device Cloud Sync</td>
-                    <td className="p-4 sm:p-5 bg-indigo-50/20 font-bold text-emerald-600">
-                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Supabase Realtime</div>
+                    <td className="p-4 sm:p-5 bg-indigo-50/30 font-bold text-emerald-600 border-x border-indigo-100">
+                      <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Supabase Realtime</div>
                     </td>
                     <td className="p-4 sm:p-5 text-slate-500">⚠️ Needs Google Drive</td>
                     <td className="p-4 sm:p-5 text-slate-400">❌ Local only</td>
@@ -949,8 +987,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 6. INTERACTIVE FAQ ACCORDION ── */}
-      <section id="faq" className="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-3 mb-12">
+      <section id="faq" className="py-10 sm:py-14 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center space-y-2.5 mb-8">
           <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
             Got Questions?
           </span>
@@ -989,7 +1027,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 7. HIGH-CONVERSION CTA BANNER ── */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div
           className="rounded-3xl p-8 sm:p-14 text-center text-white relative overflow-hidden shadow-2xl"
           style={{
@@ -1021,33 +1059,78 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 8. FOOTER ── */}
-      <footer className="bg-slate-900 text-slate-400 py-10 border-t border-slate-800">
+      <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold">
-                <BookOpen className="w-4 h-4" />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 text-center sm:text-left">
+            {/* Left: Brand & Copyright */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold">
+                  <BookOpen className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-bold text-white text-[16px] tracking-tight">SnapSched</span>
               </div>
-              <span className="font-bold text-white text-[17px] tracking-tight">SnapSched</span>
+              <span className="hidden sm:inline-block w-px h-3.5 bg-slate-700" />
+              <span className="text-[12.5px] text-slate-400">
+                © {new Date().getFullYear()} SnapSched. All rights reserved.
+              </span>
             </div>
 
-            <div className="flex items-center gap-6 text-[13px] font-medium text-slate-400">
-              <a href="#features" className="hover:text-white transition-colors">
-                Features
-              </a>
-              <a href="#how-it-works" className="hover:text-white transition-colors">
-                How It Works
-              </a>
-              <a href="#comparison" className="hover:text-white transition-colors">
-                Comparison
-              </a>
-              <a href="#faq" className="hover:text-white transition-colors">
-                FAQ
-              </a>
+            {/* Right: Legal & Support Links */}
+            <div className="flex items-center gap-4 text-[12.5px] font-medium text-slate-400">
+              <button
+                type="button"
+                onClick={() => setContactModalOpen(true)}
+                className="hover:text-white transition-colors cursor-pointer"
+              >
+                Contact Us
+              </button>
+              <span className="w-px h-3.5 bg-slate-700 inline-block" />
+              <button
+                type="button"
+                onClick={() => openLegal('terms')}
+                className="hover:text-white transition-colors cursor-pointer"
+              >
+                Terms of Service
+              </button>
+              <span className="w-px h-3.5 bg-slate-700 inline-block" />
+              <button
+                type="button"
+                onClick={() => openLegal('privacy')}
+                className="hover:text-white transition-colors cursor-pointer"
+              >
+                Privacy Policy
+              </button>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Floating Circular "Back to top" Button */}
+      {scrolled && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Back to top"
+          className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl hover:shadow-2xl text-slate-700 hover:text-indigo-600 hover:scale-110 active:scale-95 transition-all fixed bottom-6 right-6 z-40 flex items-center justify-center group cursor-pointer animate-fade-in"
+        >
+          <ArrowUp className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" />
+          <span className="sr-only">Back to top</span>
+        </button>
+      )}
+
+      {/* Interactive Legal Modal */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        initialTab={legalTab}
+        onClose={() => setLegalModalOpen(false)}
+      />
+
+      {/* Interactive Contact & Support Modal */}
+      <ContactModal
+        isOpen={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+      />
     </div>
   );
 };
