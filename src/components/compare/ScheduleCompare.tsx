@@ -18,7 +18,6 @@ import {
   Sparkles,
   BookOpen,
   Info,
-  ChevronDown,
   QrCode,
   Camera,
   Loader2,
@@ -63,7 +62,6 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
   const [importError, setImportError] = useState('');
   const [copiedExport, setCopiedExport] = useState(false);
   const [copiedShareUrl, setCopiedShareUrl] = useState(false);
-  const [showFriendClasses, setShowFriendClasses] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -548,68 +546,15 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
-                <button
-                  onClick={() => setShowFriendClasses(!showFriendClasses)}
-                  className="text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <span>{showFriendClasses ? 'Hide' : 'View'} {activeFriend.name}'s Schedule</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFriendClasses ? 'rotate-180' : ''}`} />
-                </button>
-
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
                   onClick={() => handleDeleteFriend(activeFriend.id, activeFriend.name)}
-                  className="text-[12px] font-bold text-rose-600 hover:text-rose-700 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200/60 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="text-[12px] font-bold text-rose-600 hover:text-rose-700 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200/70 flex items-center gap-1.5 transition-colors cursor-pointer"
                   title={`Remove ${activeFriend.name} from comparison`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Remove Friend</span>
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* Friend Schedule Drawer Preview */}
-          {activeFriend && showFriendClasses && (
-            <div
-              className="p-4 rounded-xl border space-y-3 animate-fade-in"
-              style={{ background: 'var(--surface-secondary)', borderColor: 'var(--border-default)' }}
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>{activeFriend.name}'s Classes in {activeCategoryName} ({activeFriend.course})</span>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono">
-                    {activeFriend.schedule.items.filter((c) => (c.category || 'School').toLowerCase() === activeCategoryName.toLowerCase()).length} Total
-                  </span>
-                  <button
-                    onClick={() => handleDeleteFriend(activeFriend.id, activeFriend.name)}
-                    className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Delete Friend</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                {activeFriend.schedule.items
-                  .filter((c) => (c.category || 'School').toLowerCase() === activeCategoryName.toLowerCase())
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3 rounded-lg bg-white border border-slate-200 shadow-2xs space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-[12.5px] text-slate-900 truncate">{item.code}</span>
-                        <span className="text-[10px] font-mono font-semibold text-slate-500">{item.days.join('')}</span>
-                      </div>
-                      <div className="text-[11.5px] text-slate-600 truncate">{item.name}</div>
-                      <div className="text-[10.5px] text-slate-400 flex items-center justify-between">
-                        <span>{item.room || 'General'}</span>
-                        <span className="font-mono">{format12Hour(item.startTime)} - {format12Hour(item.endTime)}</span>
-                      </div>
-                    </div>
-                  ))}
               </div>
             </div>
           )}
