@@ -21,6 +21,7 @@ import {
   QrCode,
   Camera,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { ScheduleSet, FriendSchedule, OverlapFreeSlot, DAYS_OF_WEEK, CategoryItem, ClassItem } from '../../types/schedule';
 import { COLOR_PALETTES } from '../../data/sampleSchedules';
@@ -57,6 +58,7 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
   const [activeModalTab, setActiveModalTab] = useState<'qr' | 'import' | 'manual' | 'export'>('qr');
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [pendingFriendConfirm, setPendingFriendConfirm] = useState<FriendSchedule | null>(null);
+  const [friendToDelete, setFriendToDelete] = useState<FriendSchedule | null>(null);
 
   const [importJsonText, setImportJsonText] = useState('');
   const [importError, setImportError] = useState('');
@@ -301,21 +303,38 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
     setNewFriendCourse('');
   };
 
-  const handleDeleteFriend = async (id: string, name: string) => {
-    if (confirm(`Remove ${name} from your comparison list?`)) {
-      storageService.deleteFriend(id);
-      const updated = storageService.getFriends();
-      setFriends(updated);
-      if (selectedFriendId === id) {
-        setSelectedFriendId(updated[0]?.id || '');
-      }
+  const handleDeleteFriend = (id: string, name: string) => {
+    const target = friends.find((f) => f.id === id);
+    if (target) {
+      setFriendToDelete(target);
+    } else {
+      setFriendToDelete({
+        id,
+        name,
+        course: '',
+        avatarColor: COLOR_PALETTES[0],
+        schedule: { id: '', name: '', semester: '', academicYear: '', isDefault: false, createdAt: '', items: [] },
+      });
+    }
+  };
 
-      if (isCloud) {
-        try {
-          await cloud.deleteFriend(id);
-        } catch (err) {
-          console.warn('Failed to delete friend from cloud', err);
-        }
+  const executeDeleteFriend = async () => {
+    if (!friendToDelete) return;
+    const target = friendToDelete;
+    setFriendToDelete(null);
+
+    storageService.deleteFriend(target.id);
+    const updated = storageService.getFriends();
+    setFriends(updated);
+    if (selectedFriendId === target.id) {
+      setSelectedFriendId(updated[0]?.id || '');
+    }
+
+    if (isCloud) {
+      try {
+        await cloud.deleteFriend(target.id);
+      } catch (err) {
+        console.warn('Failed to delete friend from cloud', err);
       }
     }
   };
@@ -915,6 +934,66 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
         onConfirm={handleConfirmFriend}
         onCancel={() => setPendingFriendConfirm(null)}
       />
+
+      {/* ── DELETE FRIEND CONFIRMATION MODAL ── */}
+      {friendToDelete && (
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 animate-overlay-in select-none z-50"
+          style={{ background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setFriendToDelete(null);
+          }}
+        >
+          <div className="w-full max-w-sm overflow-hidden flex flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 animate-scale-in p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-[15px] text-slate-900">Remove Friend</h3>
+                <p className="text-[12px] text-slate-500 font-medium">Remove from comparison list</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                style={{ background: friendToDelete.avatarColor || '#6366f1' }}
+              >
+                {friendToDelete.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-sm text-slate-900 truncate">{friendToDelete.name}</div>
+                <div className="text-xs text-slate-500 truncate">
+                  {friendToDelete.course || 'Student'} · {friendToDelete.schedule?.items?.length || 0} classes
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to remove <strong>{friendToDelete.name}</strong>? Their schedule and mutual free time windows will no longer be compared.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setFriendToDelete(null)}
+                className="py-2.5 px-3 rounded-xl font-bold text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeDeleteFriend}
+                className="py-2.5 px-3 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Remove</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
