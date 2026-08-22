@@ -26,10 +26,11 @@ import {
 import { ScheduleSet, FriendSchedule, OverlapFreeSlot, DAYS_OF_WEEK, CategoryItem, ClassItem } from '../../types/schedule';
 import { COLOR_PALETTES } from '../../data/sampleSchedules';
 import { storageService } from '../../services/storageService';
+import { useAuth } from '../../contexts/AuthContext';
+import * as cloud from '../../services/supabaseDataService';
 import { timeToMinutes, format12Hour, formatDuration } from '../../hooks/useVacantPeriods';
 import {
   generateUniversalShareUrl,
-  renderQrCodeToCanvas,
   generateQrDataUrl,
   parseIncomingShareString,
 } from '../../services/qrService';
@@ -47,6 +48,9 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
   selectedCategory = 'School',
   onSelectCategory,
 }) => {
+  const { user } = useAuth();
+  const isCloud = !!user;
+
   const [categories] = useState<CategoryItem[]>(() => storageService.getCategories());
   const [friends, setFriends] = useState<FriendSchedule[]>(() => storageService.getFriends());
   const [selectedFriendId, setSelectedFriendId] = useState<string>(() => friends[0]?.id || '');
@@ -69,6 +73,27 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
   const [newFriendCourse, setNewFriendCourse] = useState('');
   const [newFriendColor, setNewFriendColor] = useState(COLOR_PALETTES[0]);
 
+  // Sync with Supabase cloud when logged in
+  useEffect(() => {
+    if (isCloud) {
+      cloud.fetchFriends().then((cloudFriends) => {
+        if (cloudFriends && cloudFriends.length > 0) {
+          setFriends(cloudFriends);
+          storageService.saveFriends(cloudFriends);
+          if (!selectedFriendId) {
+            setSelectedFriendId(cloudFriends[0]?.id || '');
+          }
+        } else {
+          // If cloud has no friends yet, sync any local friends to cloud
+          const localFriends = storageService.getFriends();
+          if (localFriends && localFriends.length > 0) {
+            localFriends.forEach((f) => cloud.saveFriend(f).catch(console.error));
+          }
+        }
+      }).catch(console.warn);
+    }
+  }, [isCloud, user?.id]);
+
   // Keep selectedFriendId valid if friends list changes
   const activeFriend = friends.find((f) => f.id === selectedFriendId) || friends[0];
 
@@ -89,7 +114,7 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
 
   // Check on mount for incoming URL hash #share=...
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash.includes('#share=')) {
+    if (typeof window !== 'undefined' && window.location.hash.includes('share=')) {
       const parsedFriend = parseIncomingShareString(window.location.hash);
       if (parsedFriend) {
         setPendingFriendConfirm(parsedFriend);
@@ -213,13 +238,21 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
   };
 
   // Handle confirming and saving friend
-  const handleConfirmFriend = (friend: FriendSchedule) => {
+  const handleConfirmFriend = async (friend: FriendSchedule) => {
     storageService.addFriend(friend);
     const updated = storageService.getFriends();
     setFriends(updated);
     setSelectedFriendId(friend.id);
     setPendingFriendConfirm(null);
     setIsAddModalOpen(false);
+
+    if (isCloud) {
+      try {
+        await cloud.saveFriend(friend);
+      } catch (err) {
+        console.warn('Failed to sync friend to cloud', err);
+      }
+    }
   };
 
   // Handle importing a friend's schedule JSON
@@ -270,13 +303,21 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
     setNewFriendCourse('');
   };
 
-  const handleDeleteFriend = (id: string, name: string) => {
+  const handleDeleteFriend = async (id: string, name: string) => {
     if (confirm(`Remove ${name} from your comparison list?`)) {
       storageService.deleteFriend(id);
       const updated = storageService.getFriends();
       setFriends(updated);
       if (selectedFriendId === id) {
         setSelectedFriendId(updated[0]?.id || '');
+      }
+
+      if (isCloud) {
+        try {
+          await cloud.deleteFriend(id);
+        } catch (err) {
+          console.warn('Failed to delete friend from cloud', err);
+        }
       }
     }
   };
@@ -455,7 +496,7 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
                         e.stopPropagation();
                         handleDeleteFriend(f.id, f.name);
                       }}
-                      className="pr-2 pl-1 py-1.5 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      className="pr-2 pl-1.5 py-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                       title={`Remove ${f.name}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -507,13 +548,24 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowFriendClasses(!showFriendClasses)}
-                className="text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <span>{showFriendClasses ? 'Hide' : 'View'} {activeFriend.name}'s Schedule</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFriendClasses ? 'rotate-180' : ''}`} />
-              </button>
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => setShowFriendClasses(!showFriendClasses)}
+                  className="text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <span>{showFriendClasses ? 'Hide' : 'View'} {activeFriend.name}'s Schedule</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFriendClasses ? 'rotate-180' : ''}`} />
+                </button>
+
+                <button
+                  onClick={() => handleDeleteFriend(activeFriend.id, activeFriend.name)}
+                  className="text-[12px] font-bold text-rose-600 hover:text-rose-700 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200/60 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title={`Remove ${activeFriend.name} from comparison`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove Friend</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -525,9 +577,18 @@ export const ScheduleCompare: React.FC<ScheduleCompareProps> = ({
             >
               <div className="flex items-center justify-between text-xs font-bold text-slate-500">
                 <span>{activeFriend.name}'s Classes in {activeCategoryName} ({activeFriend.course})</span>
-                <span className="font-mono">
-                  {activeFriend.schedule.items.filter((c) => (c.category || 'School').toLowerCase() === activeCategoryName.toLowerCase()).length} Total
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono">
+                    {activeFriend.schedule.items.filter((c) => (c.category || 'School').toLowerCase() === activeCategoryName.toLowerCase()).length} Total
+                  </span>
+                  <button
+                    onClick={() => handleDeleteFriend(activeFriend.id, activeFriend.name)}
+                    className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete Friend</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">

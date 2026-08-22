@@ -263,42 +263,114 @@ export async function fetchFriends(): Promise<FriendSchedule[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from('friends')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true });
+  // 1. Try from user_metadata (works on all Supabase instances without custom schema)
+  if (user.user_metadata?.friends_list && Array.isArray(user.user_metadata.friends_list) && user.user_metadata.friends_list.length > 0) {
+    return user.user_metadata.friends_list;
+  }
 
-  if (error || !data) return [];
+  // 2. Fallback to 'friends' table if configured
+  try {
+    const { data, error } = await supabase
+      .from('friends')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
 
-  return data.map((f: any) => ({
-    id: f.id,
-    name: f.name,
-    avatarColor: f.avatar_color || '#6366f1',
-    course: f.course || '',
-    schedule: f.schedule_data || { id: '', name: '', semester: '', academicYear: '', isDefault: false, createdAt: '', items: [] },
-  }));
+    if (!error && data && data.length > 0) {
+      const tableFriends = data.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        avatarColor: f.avatar_color || '#6366f1',
+        course: f.course || '',
+        schedule: f.schedule_data || { id: '', name: '', semester: '', academicYear: '', isDefault: false, createdAt: '', items: [] },
+      }));
+
+      // Cache back into user_metadata
+      await supabase.auth.updateUser({ data: { friends_list: tableFriends } }).catch(() => {});
+      return tableFriends;
+    }
+  } catch {
+    // ignore
+  }
+
+  return [];
 }
 
 export async function saveFriend(friend: FriendSchedule): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
-  const { error } = await supabase.from('friends').upsert({
-    id: friend.id,
-    user_id: user.id,
-    name: friend.name,
-    avatar_color: friend.avatarColor,
-    course: friend.course,
-    schedule_data: friend.schedule,
-  });
+  try {
+    // 1. Update user_metadata friends list
+    const currentFriends: FriendSchedule[] = (user.user_metadata?.friends_list as FriendSchedule[]) || storageService.getFriends() || [];
+    const filtered = currentFriends.filter((f) => f.id !== friend.id);
+    const updated = [...filtered, friend];
 
-  return !error;
+    await supabase.auth.updateUser({
+      data: { friends_list: updated },
+    });
+
+    // 2. Also try table upsert
+    try {
+      await supabase.from('friends').upsert({
+        id: friend.id,
+        user_id: user.id,
+        name: friend.name,
+        avatar_color: friend.avatarColor,
+        course: friend.course,
+        schedule_data: friend.schedule,
+      });
+    } catch {
+      // ignore
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error saving friend to cloud:', err);
+    return false;
+  }
+}
+
+export async function saveAllFriends(friends: FriendSchedule[]): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  try {
+    await supabase.auth.updateUser({
+      data: { friends_list: friends },
+    });
+    return true;
+  } catch (err) {
+    console.error('Error saving all friends to cloud:', err);
+    return false;
+  }
 }
 
 export async function deleteFriend(id: string): Promise<boolean> {
-  const { error } = await supabase.from('friends').delete().eq('id', id);
-  return !error;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  try {
+    // 1. Remove from user_metadata
+    const currentFriends: FriendSchedule[] = (user.user_metadata?.friends_list as FriendSchedule[]) || storageService.getFriends() || [];
+    const updated = currentFriends.filter((f) => f.id !== id);
+
+    await supabase.auth.updateUser({
+      data: { friends_list: updated },
+    });
+
+    // 2. Also try table delete
+    try {
+      await supabase.from('friends').delete().eq('id', id);
+    } catch {
+      // ignore
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error deleting friend from cloud:', err);
+    return false;
+  }
 }
 
 // ─── MIGRATION (localStorage → Supabase) ────────────────────
@@ -315,7 +387,22 @@ export async function migrateFromLocalStorage(): Promise<{ migrated: boolean; me
     .limit(1);
 
   if (existingSets && existingSets.length > 0) {
-    return { migrated: false, message: 'Cloud data already exists. Skipping migration.' };
+    // Always sync local friends if any exist on this device
+    try {
+      const localFriends = storageService.getFriends();
+      if (localFriends && localFriends.length > 0) {
+        const cloudFriends = await fetchFriends();
+        const mergedMap = new Map<string, FriendSchedule>();
+        cloudFriends.forEach((f) => mergedMap.set(f.id, f));
+        localFriends.forEach((f) => mergedMap.set(f.id, f));
+        const mergedList = Array.from(mergedMap.values());
+        await saveAllFriends(mergedList);
+        storageService.saveFriends(mergedList);
+      }
+    } catch {
+      // ignore
+    }
+    return { migrated: false, message: 'Cloud data already exists. Synced any new local friends.' };
   }
 
   // Get localStorage data

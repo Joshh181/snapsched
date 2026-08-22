@@ -54,7 +54,7 @@ export function expandPayloadToFriendSchedule(payload: any): FriendSchedule {
     if (Array.isArray(c.d)) {
       days = c.d;
     } else if (typeof c.d === 'string') {
-      days = (c.d.includes(',') ? c.d.split(',') : [c.d]) as DayAbbreviation[];
+      days = (c.d.includes(',') ? c.d.split(',') : c.d.split('')) as DayAbbreviation[];
     } else if (Array.isArray(c.days)) {
       days = c.days;
     }
@@ -93,12 +93,43 @@ export function expandPayloadToFriendSchedule(payload: any): FriendSchedule {
   };
 }
 
+// Safe base64 encoding (UTF-8 safe + URL safe)
+function safeBase64Encode(str: string): string {
+  const utf8Bytes = encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+    String.fromCharCode(parseInt(p1, 16))
+  );
+  return btoa(utf8Bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Safe base64 decoding (resilient to URL encoding, spaces, padding)
+function safeBase64Decode(str: string): string | null {
+  try {
+    let clean = decodeURIComponent(str).trim();
+    // Replace URL-safe chars back to standard base64
+    clean = clean.replace(/-/g, '+').replace(/_/g, '/').replace(/ /g, '+');
+    // Add back padding
+    while (clean.length % 4 !== 0) {
+      clean += '=';
+    }
+    const binary = atob(clean);
+    return decodeURIComponent(
+      Array.prototype.map.call(binary, (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+    );
+  } catch (err) {
+    try {
+      // Fallback: direct atob
+      return atob(str.trim());
+    } catch {
+      return null;
+    }
+  }
+}
+
 // Universal Share URL generator
 export function generateUniversalShareUrl(schedule: ScheduleSet): string {
   const compact = compressScheduleToPayload(schedule);
   const jsonStr = JSON.stringify(compact);
-  // UTF-8 safe base64 encoding
-  const b64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+  const b64 = safeBase64Encode(jsonStr);
   const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://snapsched.app';
   return `${baseUrl}#share=${b64}`;
 }
@@ -107,7 +138,7 @@ export function generateUniversalShareUrl(schedule: ScheduleSet): string {
 export async function generateQrDataUrl(text: string): Promise<string> {
   try {
     return await QRCode.toDataURL(text, {
-      width: 300,
+      width: 320,
       margin: 2,
       color: {
         dark: '#1e1b4b',
@@ -117,13 +148,7 @@ export async function generateQrDataUrl(text: string): Promise<string> {
     });
   } catch (err) {
     console.error('Failed to generate QR data URL', err);
-    // If payload is unusually large, fallback to ultra-compact string
-    return await QRCode.toDataURL(text.slice(0, 1000), {
-      width: 300,
-      margin: 2,
-      color: { dark: '#1e1b4b', light: '#ffffff' },
-      errorCorrectionLevel: 'L',
-    });
+    throw err;
   }
 }
 
@@ -133,26 +158,24 @@ export function parseIncomingShareString(rawText: string): FriendSchedule | null
   const trimmed = rawText.trim();
 
   try {
-    // Check if it's a URL containing #share=...
-    if (trimmed.includes('#share=')) {
-      const b64Part = trimmed.split('#share=')[1]?.split('&')[0];
-      if (b64Part) {
-        const decodedJson = decodeURIComponent(
-          Array.prototype.map.call(atob(b64Part), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-        );
-        const parsed = JSON.parse(decodedJson);
-        if (parsed && (parsed.i || parsed.items || parsed.n)) {
-          return expandPayloadToFriendSchedule(parsed);
+    // 1. Check if it's a URL containing #share=... or share=...
+    if (trimmed.includes('share=')) {
+      const match = trimmed.match(/share=([A-Za-z0-9\-_+=%]+)/);
+      if (match && match[1]) {
+        const decodedJson = safeBase64Decode(match[1]);
+        if (decodedJson) {
+          const parsed = JSON.parse(decodedJson);
+          if (parsed && (parsed.i || parsed.items || parsed.n)) {
+            return expandPayloadToFriendSchedule(parsed);
+          }
         }
       }
     }
 
-    // Check if it's raw base64 string
-    if (/^[A-Za-z0-9+/=]+$/.test(trimmed) && trimmed.length > 20) {
+    // 2. Check if it's raw base64 string
+    const decodedJson = safeBase64Decode(trimmed);
+    if (decodedJson) {
       try {
-        const decodedJson = decodeURIComponent(
-          Array.prototype.map.call(atob(trimmed), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-        );
         const parsed = JSON.parse(decodedJson);
         if (parsed && (parsed.i || parsed.items || parsed.n)) {
           return expandPayloadToFriendSchedule(parsed);
@@ -162,7 +185,7 @@ export function parseIncomingShareString(rawText: string): FriendSchedule | null
       }
     }
 
-    // Check if it's standard JSON format
+    // 3. Check if it's standard JSON format
     const parsed = JSON.parse(trimmed);
     if (parsed.v === 2 && Array.isArray(parsed.i)) {
       return expandPayloadToFriendSchedule(parsed);
@@ -200,34 +223,49 @@ export function parseIncomingShareString(rawText: string): FriendSchedule | null
   return null;
 }
 
-// Render QR Code onto a canvas element
-export async function renderQrCodeToCanvas(canvas: HTMLCanvasElement, text: string): Promise<void> {
-  await QRCode.toCanvas(canvas, text, {
-    width: 280,
-    margin: 2,
-    color: {
-      dark: '#1e1b4b',
-      light: '#ffffff',
-    },
-    errorCorrectionLevel: 'M',
-  });
-}
-
-// Decode QR Code from an HTML Image Element / Canvas
-export function decodeQrFromImage(imgElement: HTMLImageElement): string | null {
-  const canvas = document.createElement('canvas');
-  canvas.width = imgElement.naturalWidth || imgElement.width;
-  canvas.height = imgElement.naturalHeight || imgElement.height;
-  const ctx = canvas.getContext('2d');
+// Helper to scan ImageData on canvas with jsQR
+function scanCanvasImageData(canvas: HTMLCanvasElement): string | null {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) return null;
-
-  ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const code = jsQR(imageData.data, imageData.width, imageData.height, {
     inversionAttempts: 'attemptBoth',
   });
-
   return code ? code.data : null;
+}
+
+// Decode QR Code from an HTML Image Element with multi-scale recognition for mobile screenshots
+export function decodeQrFromImage(imgElement: HTMLImageElement): string | null {
+  const origW = imgElement.naturalWidth || imgElement.width;
+  const origH = imgElement.naturalHeight || imgElement.height;
+  if (!origW || !origH) return null;
+
+  // Try 1: Scan at natural resolution
+  const canvas = document.createElement('canvas');
+  canvas.width = origW;
+  canvas.height = origH;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+
+  ctx.drawImage(imgElement, 0, 0, origW, origH);
+  let result = scanCanvasImageData(canvas);
+  if (result) return result;
+
+  // Try 2: Scale down high-resolution smartphone screenshots (e.g. 1080p/4K) to 800px max
+  const maxScales = [800, 500, 1200];
+  for (const maxDim of maxScales) {
+    if (origW > maxDim || origH > maxDim) {
+      const scale = maxDim / Math.max(origW, origH);
+      canvas.width = Math.round(origW * scale);
+      canvas.height = Math.round(origH * scale);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+      result = scanCanvasImageData(canvas);
+      if (result) return result;
+    }
+  }
+
+  return null;
 }
 
 // Decode QR from Video Stream ImageData
