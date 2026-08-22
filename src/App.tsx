@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   Calendar,
   ScanLine,
@@ -9,20 +9,30 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AuthPage } from './components/auth/AuthPage';
-import { LandingPage } from './components/landing/LandingPage';
 import { useSchedule } from './hooks/useSchedule';
 import { useVacantPeriods } from './hooks/useVacantPeriods';
 import { storageService } from './services/storageService';
 import { Sidebar, ActiveTab } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { TimetableGrid } from './components/timetable/TimetableGrid';
-import { ScheduleScanner } from './components/scanner/ScheduleScanner';
-import { VacantBreakPlanner } from './components/planner/VacantBreakPlanner';
-import { ScheduleCompare } from './components/compare/ScheduleCompare';
-import { SettingsModal } from './components/settings/SettingsModal';
-import { ClassModal } from './components/timetable/ClassModal';
 import { ClassItem, VacantPeriod } from './types/schedule';
+
+// Lazy-loaded routes & heavy modules for code-splitting & instant initial load
+const LandingPage = lazy(() => import('./components/landing/LandingPage').then(m => ({ default: m.LandingPage })));
+const AuthPage = lazy(() => import('./components/auth/AuthPage').then(m => ({ default: m.AuthPage })));
+const ScheduleScanner = lazy(() => import('./components/scanner/ScheduleScanner').then(m => ({ default: m.ScheduleScanner })));
+const VacantBreakPlanner = lazy(() => import('./components/planner/VacantBreakPlanner').then(m => ({ default: m.VacantBreakPlanner })));
+const ScheduleCompare = lazy(() => import('./components/compare/ScheduleCompare').then(m => ({ default: m.ScheduleCompare })));
+const SettingsModal = lazy(() => import('./components/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
+const ClassModal = lazy(() => import('./components/timetable/ClassModal').then(m => ({ default: m.ClassModal })));
+
+function LazyFallback() {
+  return (
+    <div className="w-full h-64 flex items-center justify-center">
+      <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+    </div>
+  );
+}
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
@@ -63,6 +73,13 @@ function AppContent() {
     currentStatus,
     currentTime,
   } = useVacantPeriods(currentCategoryClasses);
+
+  // Auto-navigate to Compare screen when incoming #share= link is opened
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash.includes('#share=')) {
+      setActiveTab('compare');
+    }
+  }, []);
 
   // Close sidebar on window resize to desktop
   useEffect(() => {
@@ -131,15 +148,43 @@ function AppContent() {
   // Unauthenticated Visitor Flow: Landing Page -> Auth
   if (!user && visitorView === 'landing') {
     return (
-      <LandingPage
-        onGetStarted={() => setVisitorView('auth')}
-        onSignIn={() => setVisitorView('auth')}
-      />
+      <Suspense
+        fallback={
+          <div
+            className="min-h-screen flex items-center justify-center"
+            style={{
+              background: 'radial-gradient(ellipse at 12% 8%, #e0e7ff 0%, transparent 42%), radial-gradient(ellipse at 88% 12%, #ede9fe 0%, transparent 40%), #f4f6fc',
+            }}
+          >
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          </div>
+        }
+      >
+        <LandingPage
+          onGetStarted={() => setVisitorView('auth')}
+          onSignIn={() => setVisitorView('auth')}
+        />
+      </Suspense>
     );
   }
 
   if (!user && visitorView === 'auth') {
-    return <AuthPage onBackToLanding={() => setVisitorView('landing')} />;
+    return (
+      <Suspense
+        fallback={
+          <div
+            className="min-h-screen flex items-center justify-center"
+            style={{
+              background: 'radial-gradient(ellipse at 12% 8%, #e0e7ff 0%, transparent 42%), radial-gradient(ellipse at 88% 12%, #ede9fe 0%, transparent 40%), #f4f6fc',
+            }}
+          >
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          </div>
+        }
+      >
+        <AuthPage onBackToLanding={() => setVisitorView('landing')} />
+      </Suspense>
+    );
   }
 
   return (
@@ -178,78 +223,84 @@ function AppContent() {
           {/* Workspace content */}
           <main className="flex-1 w-full pb-6 px-1 md:px-2">
             <div className="animate-fade-in">
-              {activeTab === 'timetable' && (
-                <TimetableGrid
-                  classes={classes}
-                  vacantPeriods={allVacantPeriods}
-                  todayAbbr={todayAbbr}
-                  currentTime={currentTime}
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={setSelectedCategory}
-                  onEditClass={handleOpenEditModal}
-                  onDeleteClass={deleteClassItem}
-                  onClearCategory={clearCategoryClasses}
-                  onDeleteMultiple={deleteMultipleClasses}
-                  onAddClass={handleOpenAddModal}
-                  onSelectVacant={handleSelectVacantFromGrid}
-                />
-              )}
+              <Suspense fallback={<LazyFallback />}>
+                {activeTab === 'timetable' && (
+                  <TimetableGrid
+                    classes={classes}
+                    vacantPeriods={allVacantPeriods}
+                    todayAbbr={todayAbbr}
+                    currentTime={currentTime}
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                    onEditClass={handleOpenEditModal}
+                    onDeleteClass={deleteClassItem}
+                    onClearCategory={clearCategoryClasses}
+                    onDeleteMultiple={deleteMultipleClasses}
+                    onAddClass={handleOpenAddModal}
+                    onSelectVacant={handleSelectVacantFromGrid}
+                  />
+                )}
 
-              {activeTab === 'scanner' && (
-                <ScheduleScanner
-                  activeCategory={selectedCategory}
-                  onImportClasses={(imported, replace) => {
-                    const targetCat = imported.find((i) => i.category)?.category || imported[0]?.category || selectedCategory || 'School';
-                    importOcrClasses(imported, replace);
-                    setSelectedCategory(targetCat);
-                    setActiveTab('timetable');
-                  }}
-                  onOpenSettings={() => setActiveTab('settings')}
-                />
-              )}
+                {activeTab === 'scanner' && (
+                  <ScheduleScanner
+                    activeCategory={selectedCategory}
+                    onImportClasses={(imported, replace) => {
+                      const targetCat = imported.find((i) => i.category)?.category || imported[0]?.category || selectedCategory || 'School';
+                      importOcrClasses(imported, replace);
+                      setSelectedCategory(targetCat);
+                      setActiveTab('timetable');
+                    }}
+                    onOpenSettings={() => setActiveTab('settings')}
+                  />
+                )}
 
-              {activeTab === 'breaks' && (
-                <VacantBreakPlanner
-                  vacantPeriods={allVacantPeriods}
-                  selectedVacant={targetVacantForPlanner}
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={setSelectedCategory}
-                />
-              )}
+                {activeTab === 'breaks' && (
+                  <VacantBreakPlanner
+                    vacantPeriods={allVacantPeriods}
+                    selectedVacant={targetVacantForPlanner}
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                  />
+                )}
 
-              {activeTab === 'compare' && (
-                <ScheduleCompare
-                  userSchedule={schedule}
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={setSelectedCategory}
-                />
-              )}
+                {activeTab === 'compare' && (
+                  <ScheduleCompare
+                    userSchedule={schedule}
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                  />
+                )}
 
-              {activeTab === 'settings' && (
-                <SettingsModal
-                  schedule={schedule}
-                  allSets={allSets}
-                  onSelectSet={switchScheduleSet}
-                  onCreateSet={createNewScheduleSet}
-                  onResetToSample={resetToSample}
-                  onClearAll={clearAllClasses}
-                  onUpdateProfile={updateScheduleProfile}
-                />
-              )}
+                {activeTab === 'settings' && (
+                  <SettingsModal
+                    schedule={schedule}
+                    allSets={allSets}
+                    onSelectSet={switchScheduleSet}
+                    onCreateSet={createNewScheduleSet}
+                    onResetToSample={resetToSample}
+                    onClearAll={clearAllClasses}
+                    onUpdateProfile={updateScheduleProfile}
+                  />
+                )}
+              </Suspense>
             </div>
           </main>
         </div>
 
         {/* Add / Edit Class Modal */}
-        <ClassModal
-          isOpen={isClassModalOpen}
-          onClose={() => setIsClassModalOpen(false)}
-          onSave={addClassItem}
-          onUpdate={updateClassItem}
-          onDelete={deleteClassItem}
-          initialData={editingClass}
-          activeCategory={selectedCategory}
-        />
+        <Suspense fallback={null}>
+          {isClassModalOpen && (
+            <ClassModal
+              isOpen={isClassModalOpen}
+              onClose={() => setIsClassModalOpen(false)}
+              onSave={addClassItem}
+              onUpdate={updateClassItem}
+              onDelete={deleteClassItem}
+              initialData={editingClass}
+              activeCategory={selectedCategory}
+            />
+          )}
+        </Suspense>
       </div>
     </div>
   );

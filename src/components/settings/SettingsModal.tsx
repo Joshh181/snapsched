@@ -39,7 +39,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateProfile,
 }) => {
   const { user, signOut } = useAuth();
-  const [studentName, setStudentName] = useState(() => schedule.studentName || 'Josh');
+  const [studentName, setStudentName] = useState(() => schedule.studentName || '');
   const [course, setCourse] = useState(() => schedule.course || 'BS Information Technology');
   const [isSavedProfile, setIsSavedProfile] = useState(false);
 

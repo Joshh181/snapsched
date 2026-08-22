@@ -37,11 +37,11 @@ export const Header: React.FC<HeaderProps> = ({
     user?.user_metadata?.full_name?.trim() ||
     user?.user_metadata?.name?.trim() ||
     (user?.email ? user.email.split('@')[0] : '') ||
-    'Josh';
+    '';
 
   // Extract first name for a natural friendly greeting
   const firstName = rawName.split(' ')[0] || rawName;
-  const initial = (firstName.charAt(0) || 'J').toUpperCase();
+  const initial = (firstName.charAt(0) || 'S').toUpperCase();
 
   const hour = currentTime.getHours();
   const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';

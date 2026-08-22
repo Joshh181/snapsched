@@ -26,6 +26,9 @@ import {
 } from 'lucide-react';
 import { LegalModal, LegalTab } from '../legal/LegalModal';
 import { ContactModal } from '../support/ContactModal';
+import { HeroWorkflowDemo } from './HeroWorkflowDemo';
+import { useLenisScroll } from '../../hooks/useLenisScroll';
+import { useScrollReveal } from '../../hooks/useScrollReveal';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -37,13 +40,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onSignIn,
 }) => {
   const [activeFeatureTab, setActiveFeatureTab] = useState<'scanner' | 'breaks' | 'compare' | 'categories'>('scanner');
-  const [selectedHeroDay, setSelectedHeroDay] = useState<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat'>('Mon');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [scrolled, setScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [simulatedScanStep, setSimulatedScanStep] = useState(0);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalTab, setLegalTab] = useState<LegalTab>('terms');
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [activeBadgeTooltip, setActiveBadgeTooltip] = useState<number | null>(null);
+
+  // Close badge tooltip on outside click
+  useEffect(() => {
+    if (activeBadgeTooltip === null) return;
+    const handleOutsideClick = () => setActiveBadgeTooltip(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [activeBadgeTooltip]);
+
+  // Initialize Lenis smooth inertial scrolling
+  const isAnyModalOpen = legalModalOpen || contactModalOpen;
+  const { scrollTo } = useLenisScroll({
+    enabled: !isAnyModalOpen,
+    duration: 1.2,
+    wheelMultiplier: 1.0,
+  });
+
+  // Initialize Scroll-driven staggered spring reveals
+  const pageContainerRef = useScrollReveal({
+    threshold: 0.08,
+    rootMargin: '0px 0px -40px 0px',
+    triggerOnce: true,
+  });
 
   const openLegal = (tab: LegalTab) => {
     setLegalTab(tab);
@@ -59,14 +86,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     return () => clearInterval(interval);
   }, [activeFeatureTab]);
 
-  // Navbar background change on scroll
+  // Navbar background change and scroll progress on scroll
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      const currentScroll = window.scrollY;
+      setScrolled(currentScroll > 20);
+
+      const totalDocHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalDocHeight > 0) {
+        const progress = Math.min(100, Math.max(0, (currentScroll / totalDocHeight) * 100));
+        setScrollProgress(progress);
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    scrollTo(targetId, { offset: -80 });
+  };
 
   const routineBadges = [
     { icon: '🎓', name: 'University Classes', desc: 'Lectures, Labs & Sections', color: '#4f46e5' },
@@ -76,43 +117,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     { icon: '☕', name: 'Smart Vacant Breaks', desc: 'Recharge & Free Windows', color: '#ea580c' },
     { icon: '👥', name: 'Team & Friend Match', desc: 'Common Free Schedules', color: '#7c3aed' },
   ];
-
-  const sampleClassesByDay: Record<string, Array<{ code: string; name: string; time: string; room: string; color: string; day: string }>> = {
-    Mon: [
-      { code: 'IT 311', name: 'Web Systems & Technologies 2', time: '07:30 - 09:00', room: 'IT-LAB 2', color: '#4f46e5', day: 'M-W' },
-      { code: 'CS 312', name: 'Information Assurance & Security', time: '09:00 - 10:30', room: 'CL 304', color: '#059669', day: 'M-W' },
-      { code: 'GE 108', name: 'Ethics in the Modern World', time: '13:00 - 14:30', room: 'LH 101', color: '#d97706', day: 'M-W' },
-    ],
-    Tue: [
-      { code: 'IT 314', name: 'Systems Integration & Architecture', time: '08:30 - 10:00', room: 'CL 201', color: '#2563eb', day: 'T-TH' },
-      { code: 'GE 108', name: 'Ethics in the Modern World', time: '13:00 - 14:30', room: 'LH 101', color: '#d97706', day: 'T-TH' },
-    ],
-    Wed: [
-      { code: 'IT 311', name: 'Web Systems & Technologies 2', time: '07:30 - 09:00', room: 'IT-LAB 2', color: '#4f46e5', day: 'M-W' },
-      { code: 'CS 312', name: 'Information Assurance & Security', time: '09:00 - 10:30', room: 'CL 304', color: '#059669', day: 'M-W' },
-      { code: 'GE 108', name: 'Ethics in the Modern World', time: '13:00 - 14:30', room: 'LH 101', color: '#d97706', day: 'M-W' },
-    ],
-    Thu: [
-      { code: 'IT 314', name: 'Systems Integration & Architecture', time: '08:30 - 10:00', room: 'CL 201', color: '#2563eb', day: 'T-TH' },
-      { code: 'CS 315', name: 'Mobile Application Development', time: '14:30 - 16:30', room: 'IT-LAB 3', color: '#0891b2', day: 'TH' },
-    ],
-    Fri: [
-      { code: 'PE 3', name: 'Individual & Dual Sports', time: '13:00 - 15:00', room: 'COURT 1', color: '#7c3aed', day: 'FRI' },
-      { code: 'IT 311 Lab', name: 'Web Systems Hands-On Lab', time: '15:30 - 17:30', room: 'IT-LAB 2', color: '#4f46e5', day: 'FRI' },
-    ],
-    Sat: [
-      { code: 'CAP 401', name: 'Capstone Project & Thesis 1', time: '09:00 - 12:00', room: 'SEMINAR 2', color: '#ea580c', day: 'SAT' },
-    ],
-  };
-
-  const vacantGapsByDay: Record<string, { duration: string; window: string; action: string }> = {
-    Mon: { duration: '2.5 hrs Vacant', window: '10:30 AM – 1:00 PM', action: 'Plan Study' },
-    Tue: { duration: '3.0 hrs Vacant', window: '10:00 AM – 1:00 PM', action: 'Focus Sprint' },
-    Wed: { duration: '2.5 hrs Vacant', window: '10:30 AM – 1:00 PM', action: 'Plan Study' },
-    Thu: { duration: '4.5 hrs Vacant', window: '10:00 AM – 2:30 PM', action: 'Group Review' },
-    Fri: { duration: '2.0 hrs Vacant', window: '10:00 AM – 12:00 PM', action: 'Lunch & Gym' },
-    Sat: { duration: 'Afternoon Free', window: '12:00 PM Onwards', action: 'Relax & Chill' },
-  };
 
   const faqs = [
     {
@@ -139,12 +143,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div
+      ref={pageContainerRef}
       className="min-h-screen relative selection:bg-indigo-500 selection:text-white"
       style={{
         background: 'radial-gradient(ellipse at 15% 0%, #e0e7ff 0%, transparent 40%), radial-gradient(ellipse at 85% 12%, #ede9fe 0%, transparent 35%), radial-gradient(ellipse at 10% 42%, #e0e7ff 0%, transparent 40%), radial-gradient(ellipse at 90% 68%, #ede9fe 0%, transparent 35%), radial-gradient(ellipse at 25% 92%, #e0e7ff 0%, transparent 40%), #f4f6fc',
         color: '#111827',
       }}
     >
+      {/* ── Dynamic Top Scroll Reading Progress Bar ── */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] bg-slate-200/20 z-[60] pointer-events-none">
+        <div
+          className="h-full bg-gradient-to-r from-indigo-500 via-indigo-600 to-violet-600 transition-all duration-150 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
       {/* ── 1. FIXED GLASSMORPHIC NAVBAR ── */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
@@ -154,7 +167,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           {/* Brand Logo */}
-          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer" onClick={() => scrollTo(0)}>
             <div
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-sm transition-transform hover:scale-105 shrink-0"
               style={{
@@ -169,18 +182,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </span>
           </div>
 
-          {/* Center Navigation Links (Desktop) */}
+          {/* Center Navigation Links (Desktop with smooth Lenis glide) */}
           <div className="hidden md:flex items-center gap-8 text-[14px] font-semibold text-slate-600">
-            <a href="#features" className="hover:text-indigo-600 transition-colors">
+            <a
+              href="#features"
+              onClick={(e) => handleNavClick(e, '#features')}
+              className="hover:text-indigo-600 transition-colors cursor-pointer"
+            >
               Features
             </a>
-            <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">
+            <a
+              href="#how-it-works"
+              onClick={(e) => handleNavClick(e, '#how-it-works')}
+              className="hover:text-indigo-600 transition-colors cursor-pointer"
+            >
               How It Works
             </a>
-            <a href="#comparison" className="hover:text-indigo-600 transition-colors">
+            <a
+              href="#comparison"
+              onClick={(e) => handleNavClick(e, '#comparison')}
+              className="hover:text-indigo-600 transition-colors cursor-pointer"
+            >
               Why SnapSched
             </a>
-            <a href="#faq" className="hover:text-indigo-600 transition-colors">
+            <a
+              href="#faq"
+              onClick={(e) => handleNavClick(e, '#faq')}
+              className="hover:text-indigo-600 transition-colors cursor-pointer"
+            >
               FAQ
             </a>
           </div>
@@ -189,13 +218,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onSignIn}
-              className="px-2.5 sm:px-4 py-2 text-[13px] sm:text-[14px] font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+              className="px-2.5 sm:px-4 py-2 text-[13px] sm:text-[14px] font-semibold text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer"
             >
               Sign In
             </button>
             <button
               onClick={onGetStarted}
-              className="px-3.5 sm:px-4.5 py-2 sm:py-2.5 rounded-xl font-semibold text-[12.5px] sm:text-[13.5px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              className="px-3.5 sm:px-4.5 py-2 sm:py-2.5 rounded-xl font-semibold text-[12.5px] sm:text-[13.5px] text-white flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               style={{
                 background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
               }}
@@ -211,9 +240,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="relative pt-24 sm:pt-28 pb-8 sm:pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left Column: Headlines & CTAs */}
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+          <div className="lg:col-span-5 space-y-6 text-center lg:text-left reveal-left-init stagger-1">
             {/* Main Headline */}
-            <h1 className="text-[38px] sm:text-[50px] lg:text-[56px] font-black tracking-tight text-slate-900 leading-[1.12]">
+            <h1 className="text-[36px] sm:text-[46px] lg:text-[50px] font-black tracking-tight text-slate-900 leading-[1.12]">
               Your Semester,{' '}
               <span className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
                 Beautifully Organized.
@@ -221,7 +250,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h1>
 
             {/* Subtext */}
-            <p className="text-[16px] sm:text-[18px] text-slate-600 font-medium max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+            <p className="text-[15px] sm:text-[17px] text-slate-600 font-medium max-w-2xl mx-auto lg:mx-0 leading-relaxed">
               Snap a photo of your Certificate of Registration (COR). Let AI extract every subject, room, and time slot into a sleek, cloud-synced weekly timetable in 10 seconds.
             </p>
 
@@ -229,7 +258,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2">
               <button
                 onClick={onGetStarted}
-                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-bold text-[15px] text-white flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-bold text-[15px] text-white flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 style={{
                   background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
                   boxShadow: '0 8px 24px -4px rgba(79, 70, 229, 0.45)',
@@ -257,138 +286,57 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Floating 3D Mockup Card */}
-          <div className="lg:col-span-5 relative">
-            {/* Ambient Background Glow */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/20 to-violet-500/20 rounded-3xl blur-2xl -z-10 transform rotate-1 scale-95" />
-
-            {/* Interactive Schedule Hero Card */}
-            <div
-              className="rounded-3xl p-5 sm:p-6 bg-white/95 backdrop-blur-xl border border-white/80 shadow-2xl transition-transform duration-500 hover:scale-[1.01]"
-              style={{
-                boxShadow: '0 20px 50px -12px rgba(79, 70, 229, 0.18), 0 0 0 1px rgba(226, 232, 240, 0.8)',
-              }}
-            >
-              {/* Mockup Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
-                    IT
-                  </div>
-                  <div>
-                    <div className="font-bold text-[14px] text-slate-900 leading-tight">
-                      1st Semester 2026–2027
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-medium">
-                      BS Information Technology
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>In Class Now</span>
-                </div>
-              </div>
-
-              {/* Day Selector Pills */}
-              <div className="flex items-center gap-1.5 mb-4 p-1 bg-slate-100/90 rounded-xl">
-                {(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const).map((d) => {
-                  const isSelected = selectedHeroDay === d;
-                  return (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setSelectedHeroDay(d)}
-                      className={`flex-1 text-center py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white shadow-xs scale-105'
-                          : 'text-slate-500 hover:text-slate-900 hover:bg-white/70'
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Mini Classes Timeline Mock */}
-              <div className="space-y-2.5 min-h-[220px]">
-                {(sampleClassesByDay[selectedHeroDay] || []).map((cls, idx) => (
-                  <div
-                    key={cls.code}
-                    className="p-3 rounded-2xl flex items-center justify-between border transition-all hover:translate-x-1 duration-200"
-                    style={{
-                      backgroundColor: idx === 0 ? '#f5f3ff' : '#ffffff',
-                      borderColor: idx === 0 ? '#c7d2fe' : '#e2e8f0',
-                    }}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-2.5 h-10 rounded-full shrink-0"
-                        style={{ backgroundColor: cls.color }}
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[13px] text-slate-900">{cls.code}</span>
-                          <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                            {cls.room}
-                          </span>
-                        </div>
-                        <div className="text-[12px] text-slate-500 truncate font-medium">
-                          {cls.name}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="text-[11px] font-bold text-slate-700">{cls.time}</div>
-                      <div className="text-[10px] text-slate-400 font-semibold uppercase">{cls.day}</div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Detected Vacant Period Banner in Mockup */}
-                {vacantGapsByDay[selectedHeroDay] && (
-                  <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-between text-[11px] transition-all">
-                    <div className="flex items-center gap-2 text-amber-900 font-medium">
-                      <Coffee className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>
-                        {vacantGapsByDay[selectedHeroDay].duration} ({vacantGapsByDay[selectedHeroDay].window})
-                      </span>
-                    </div>
-                    <span className="font-bold text-amber-700 underline cursor-pointer hover:text-amber-900">
-                      {vacantGapsByDay[selectedHeroDay].action}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Right Column: Animated Interactive 4-Step Walkthrough Tutorial */}
+          <div className="lg:col-span-7 relative reveal-scale-init stagger-2">
+            <HeroWorkflowDemo onGetStarted={onGetStarted} />
           </div>
         </div>
 
         {/* Lifestyle & Routine Badges Ribbon */}
-        <div className="mt-10 pt-2 text-center">
+        <div className="mt-10 pt-2 text-center reveal-init stagger-3">
           <p className="text-[12px] sm:text-[12.5px] font-bold text-slate-400 uppercase tracking-widest mb-4">
             Designed for every weekly routine — Classes, Work Shifts, Study & Daily Life
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 max-w-6xl mx-auto">
-            {routineBadges.map((badge) => (
-              <div
-                key={badge.name}
-                className="p-3 sm:px-3.5 sm:py-3 rounded-2xl bg-white/85 hover:bg-white border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all hover:scale-105 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-2 sm:gap-2.5"
-              >
-                <span className="text-xl sm:text-lg leading-none shrink-0">{badge.icon}</span>
-                <div className="min-w-0">
-                  <span className="text-[12.5px] sm:text-[13px] font-bold text-slate-800 block leading-tight truncate">
-                    {badge.name}
-                  </span>
-                  <span className="text-[10px] sm:text-[10.5px] font-semibold text-slate-400 block leading-tight mt-0.5 truncate">
-                    {badge.desc}
-                  </span>
+            {routineBadges.map((badge, idx) => {
+              const isTooltipOpen = activeBadgeTooltip === idx;
+              return (
+                <div
+                  key={badge.name}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveBadgeTooltip(isTooltipOpen ? null : idx);
+                  }}
+                  className={`group relative reveal-init stagger-${Math.min(6, idx + 1)} p-3 sm:px-3.5 sm:py-3 rounded-2xl bg-white/85 hover:bg-white border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all hover:scale-105 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-2 sm:gap-2.5 cursor-pointer`}
+                >
+                  <span className="text-xl sm:text-lg leading-none shrink-0">{badge.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[12.5px] sm:text-[13px] font-bold text-slate-800 block leading-tight truncate">
+                      {badge.name}
+                    </span>
+                    <span className="text-[10px] sm:text-[10.5px] font-semibold text-slate-400 block leading-tight mt-0.5 truncate">
+                      {badge.desc}
+                    </span>
+                  </div>
+
+                  {/* Floating Info Tooltip on Hover / Mobile Click */}
+                  <div
+                    className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-40 transition-all duration-200 pointer-events-none ${
+                      isTooltipOpen
+                        ? 'opacity-100 scale-100 visible'
+                        : 'opacity-0 scale-95 invisible group-hover:opacity-100 group-hover:scale-100 group-hover:visible'
+                    }`}
+                  >
+                    <div className="bg-slate-900 text-white text-[11px] px-3 py-1.5 rounded-xl shadow-xl border border-slate-700/60 whitespace-nowrap text-center">
+                      <div className="font-bold text-white leading-tight">{badge.name}</div>
+                      <div className="text-[10px] text-slate-300 font-medium leading-tight mt-0.5">{badge.desc}</div>
+                      {/* Downward pointer triangle */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-slate-900" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -396,7 +344,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ── 3. INTERACTIVE PRODUCT SHOWCASE (TAB SWITCHER) ── */}
       <section id="features" className="py-10 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-8">
+          <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-8 reveal-init">
             <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
               Engineered For Dynamic Weekly Routines
             </span>
@@ -406,7 +354,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Feature Tab Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-10">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-10 reveal-init stagger-1">
             {[
               { id: 'scanner', label: 'AI COR Scanner', icon: ScanLine },
               { id: 'breaks', label: 'Vacant Study Planner', icon: Coffee },
@@ -419,7 +367,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveFeatureTab(tab.id as any)}
-                  className={`relative flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-[13.5px] transition-all ${isActive
+                  className={`relative flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-[13.5px] transition-all cursor-pointer ${isActive
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]'
                       : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
@@ -436,7 +384,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Interactive Feature Display Stage */}
           <div
-            className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 sm:p-10 text-slate-900 shadow-xl relative overflow-hidden border border-slate-200/90"
+            className="reveal-scale-init stagger-2 bg-white/90 backdrop-blur-xl rounded-3xl p-6 sm:p-10 text-slate-900 shadow-xl relative overflow-hidden border border-slate-200/90"
             style={{
               boxShadow: '0 20px 50px -12px rgba(79, 70, 229, 0.1), 0 0 0 1px rgba(226, 232, 240, 0.8)',
             }}
@@ -478,7 +426,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                      <span className="font-mono text-slate-400 ml-2">COR_2026_STUDY_LOAD.PDF</span>
+                      <span className="font-mono text-slate-300 ml-2">COR_2026_STUDY_LOAD.PDF</span>
                     </div>
                     <div className="flex items-center gap-2 font-mono">
                       <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
@@ -493,10 +441,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       {/* Document Header Watermark */}
                       <div className="border-b border-slate-800 pb-2 flex items-center justify-between">
                         <div className="space-y-1">
-                          <div className="h-2.5 w-24 bg-slate-600 rounded" />
-                          <div className="h-2 w-16 bg-slate-700 rounded" />
+                          <div className="h-2.5 w-24 bg-slate-500 rounded" />
+                          <div className="h-2 w-16 bg-slate-600 rounded" />
                         </div>
-                        <div className="h-5 w-12 bg-indigo-900/60 border border-indigo-500/40 rounded text-[9px] text-indigo-300 flex items-center justify-center font-mono">
+                        <div className="h-5 w-12 bg-indigo-900/60 border border-indigo-500/40 rounded text-[9px] text-indigo-300 flex items-center justify-center font-mono font-bold">
                           VALID
                         </div>
                       </div>
@@ -504,20 +452,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       {/* Mock Text Rows */}
                       <div className="space-y-2 my-2">
                         <div className="p-1.5 rounded bg-slate-800/80 border border-slate-700/50 flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-indigo-300">IT 311 WEB SYS</span>
-                          <span className="text-slate-400">07:30-09:00</span>
+                          <span className="text-indigo-300 font-semibold">IT 311 WEB SYS</span>
+                          <span className="text-slate-300">07:30-09:00</span>
                         </div>
                         <div className="p-1.5 rounded bg-slate-800/80 border border-slate-700/50 flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-emerald-300">CS 312 SECURITY</span>
-                          <span className="text-slate-400">09:00-10:30</span>
+                          <span className="text-emerald-300 font-semibold">CS 312 SECURITY</span>
+                          <span className="text-slate-300">09:00-10:30</span>
                         </div>
                         <div className="p-1.5 rounded bg-slate-800/80 border border-slate-700/50 flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-amber-300">GE 108 ETHICS</span>
-                          <span className="text-slate-400">13:00-14:30</span>
+                          <span className="text-amber-300 font-semibold">GE 108 ETHICS</span>
+                          <span className="text-slate-300">13:00-14:30</span>
                         </div>
                         <div className="p-1.5 rounded bg-slate-800/80 border border-slate-700/50 flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-violet-300">PE 3 DUAL SPORT</span>
-                          <span className="text-slate-400">15:00-17:00</span>
+                          <span className="text-violet-300 font-semibold">PE 3 DUAL SPORT</span>
+                          <span className="text-slate-300">15:00-17:00</span>
                         </div>
                       </div>
 
@@ -525,14 +473,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_18px_4px_rgba(34,211,238,0.9)] animate-scan-beam pointer-events-none" />
                       <div className="absolute left-0 right-0 h-10 -mt-10 bg-gradient-to-t from-cyan-500/20 to-transparent pointer-events-none animate-scan-beam" />
 
-                      <div className="text-[9.5px] font-mono text-slate-500 text-center">
+                      <div className="text-[9.5px] font-mono text-slate-400 text-center font-medium">
                         DOCUMENT OCR CAPTURE ACTIVE
                       </div>
                     </div>
 
                     {/* Extracted Output Live Feed */}
                     <div className="sm:col-span-6 space-y-2">
-                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                      <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
                         <span>Extracted Classes</span>
                         <span className="text-emerald-400 font-mono">4 Detected</span>
                       </div>
@@ -610,7 +558,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <div className="lg:col-span-7 bg-slate-950/95 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-4 shadow-2xl text-white">
                   {/* Timeline Bar Mock with Animated Pulse Gap */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                    <div className="flex items-center justify-between text-xs text-slate-300 font-mono">
                       <span>DAILY TIMELINE: 07:00 AM — 05:00 PM</span>
                       <span className="text-amber-400 font-bold">TUESDAY</span>
                     </div>
@@ -638,7 +586,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           <Zap className="w-3.5 h-3.5 text-indigo-400" />
                           Focus Study Sprint
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-bold">
                           50 Mins
                         </span>
                       </div>
@@ -646,9 +594,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                         <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 w-3/4 rounded-full" />
                       </div>
-                      <div className="text-[10.5px] text-slate-400 flex items-center justify-between">
+                      <div className="text-[10.5px] text-slate-300 flex items-center justify-between font-medium">
                         <span>Library 3rd Floor</span>
-                        <span className="text-indigo-400 font-mono">37:30 remaining</span>
+                        <span className="text-indigo-400 font-mono font-bold">37:30 remaining</span>
                       </div>
                     </div>
 
@@ -658,7 +606,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           <Coffee className="w-3.5 h-3.5 text-amber-400" />
                           Campus Break
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">
                           40 Mins
                         </span>
                       </div>
@@ -666,9 +614,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                         <div className="h-full bg-amber-400 w-1/2 rounded-full" />
                       </div>
-                      <div className="text-[10.5px] text-slate-400 flex items-center justify-between">
+                      <div className="text-[10.5px] text-slate-300 flex items-center justify-between font-medium">
                         <span>Student Center Food Court</span>
-                        <span className="text-amber-400 font-mono">Scheduled</span>
+                        <span className="text-amber-400 font-mono font-bold">Scheduled</span>
                       </div>
                     </div>
                   </div>
@@ -707,14 +655,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
 
                 <div className="lg:col-span-7 bg-slate-950/95 rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-3.5 shadow-2xl text-white">
-                  <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800 text-slate-400">
+                  <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800 text-slate-300">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-indigo-500" />
                       <span className="font-bold text-white">You</span>
-                      <span className="text-slate-500">+</span>
+                      <span className="text-slate-400">+</span>
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
                       <span className="font-bold text-white">Bea (Blockmate)</span>
-                      <span className="text-slate-500">+</span>
+                      <span className="text-slate-400">+</span>
                       <span className="w-2 h-2 rounded-full bg-amber-500" />
                       <span className="font-bold text-white">Carlos (Study Group)</span>
                     </div>
@@ -724,7 +672,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {/* Overlap Matching Zone Mock */}
                   <div className="space-y-2 text-xs">
                     <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                      <span className="font-mono text-slate-400">09:00 AM – 10:30 AM</span>
+                      <span className="font-mono text-slate-300">09:00 AM – 10:30 AM</span>
                       <span className="text-rose-400 font-semibold">Carlos has Lecture (CL 304)</span>
                     </div>
 
@@ -734,7 +682,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           <span>🎉 Mutual Free Time Found!</span>
                           <span className="px-2 py-0.5 rounded bg-emerald-400 text-slate-950 font-bold text-[10px]">2.5 HRS</span>
                         </div>
-                        <div className="text-[11px] text-slate-300">
+                        <div className="text-[11px] text-slate-200">
                           11:30 AM — 02:00 PM (Everyone is free for lunch & review)
                         </div>
                       </div>
@@ -744,7 +692,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
 
                     <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                      <span className="font-mono text-slate-400">02:00 PM – 04:00 PM</span>
+                      <span className="font-mono text-slate-300">02:00 PM – 04:00 PM</span>
                       <span className="text-rose-400 font-semibold">You have IT Lab 2</span>
                     </div>
                   </div>
@@ -796,12 +744,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
                           idx < 2
                             ? 'bg-slate-800 border-indigo-400/50 text-white shadow-xs'
-                            : 'bg-slate-900 border-slate-800 text-slate-400'
+                            : 'bg-slate-900 border-slate-800 text-slate-300'
                         }`}
                       >
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
                         <span>{cat.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-700/80 text-slate-300 font-mono">
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-700/80 text-slate-200 font-mono">
                           {cat.count}
                         </span>
                       </div>
@@ -843,7 +791,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* ── 4. 3-STEP WORKFLOW ── */}
       <section id="how-it-works" className="py-10 sm:py-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-10">
+        <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-10 reveal-init">
           <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
             Lightning Fast Setup
           </span>
@@ -858,7 +806,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
             {/* Step 1 */}
-            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
+            <div className="reveal-init stagger-1 p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm group-hover:scale-105 transition-transform">
                   1
@@ -874,7 +822,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Step 2 */}
-            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
+            <div className="reveal-init stagger-2 p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm group-hover:scale-105 transition-transform">
                   2
@@ -890,7 +838,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Step 3 */}
-            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
+            <div className="reveal-init stagger-3 p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative space-y-4 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-[20px] shadow-sm group-hover:scale-105 transition-transform">
                   3
@@ -911,7 +859,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ── 5. COMPARISON MATRIX ── */}
       <section id="comparison" className="py-10 sm:py-14">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-10">
+          <div className="text-center max-w-3xl mx-auto space-y-2.5 mb-10 reveal-init">
             <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
               Why Students Switch
             </span>
@@ -920,7 +868,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h2>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
+          <div className="reveal-scale-init stagger-2 bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -988,7 +936,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* ── 6. INTERACTIVE FAQ ACCORDION ── */}
       <section id="faq" className="py-10 sm:py-14 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-2.5 mb-8">
+        <div className="text-center space-y-2.5 mb-8 reveal-init">
           <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
             Got Questions?
           </span>
@@ -1003,11 +951,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             return (
               <div
                 key={faq.q}
-                className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden transition-all shadow-2xs"
+                className={`reveal-init stagger-${Math.min(5, idx + 1)} rounded-2xl border border-slate-200/90 bg-white overflow-hidden transition-all shadow-2xs`}
               >
                 <button
                   onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-[15px] text-slate-900 hover:text-indigo-600 transition-colors"
+                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-[15px] text-slate-900 hover:text-indigo-600 transition-colors cursor-pointer"
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
@@ -1029,14 +977,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ── 7. HIGH-CONVERSION CTA BANNER ── */}
       <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div
-          className="rounded-3xl p-8 sm:p-14 text-center text-white relative overflow-hidden shadow-2xl"
+          className="reveal-scale-init rounded-3xl p-8 sm:p-14 text-center text-white relative overflow-hidden shadow-2xl"
           style={{
             background: 'linear-gradient(135deg, #4338ca 0%, #4f46e5 50%, #7c3aed 100%)',
           }}
         >
           {/* Floating Glow Accents */}
-          <div className="absolute top-0 left-1/4 w-80 h-80 bg-indigo-300/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-violet-300/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 left-1/4 w-80 h-80 bg-indigo-300/20 rounded-full blur-3xl pointer-events-none animate-ambient-pulse" />
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-violet-300/20 rounded-full blur-3xl pointer-events-none animate-ambient-pulse" />
 
           <div className="relative z-10 max-w-2xl mx-auto space-y-6">
             <h2 className="text-[34px] sm:text-[46px] font-black tracking-tight text-white leading-tight">
@@ -1049,7 +997,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex justify-center pt-2">
               <button
                 onClick={onGetStarted}
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold text-[16px] text-indigo-900 bg-white hover:bg-slate-50 shadow-xl transition-all hover:scale-[1.03] active:scale-[0.98]"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold text-[16px] text-indigo-900 bg-white hover:bg-slate-50 shadow-xl transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
               >
                 Get Started Free Now →
               </button>
@@ -1059,7 +1007,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 8. FOOTER ── */}
-      <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800">
+      <footer className="reveal-init bg-slate-900 text-slate-400 py-8 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 text-center sm:text-left">
             {/* Left: Brand & Copyright */}
@@ -1106,11 +1054,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </footer>
 
-      {/* Floating Circular "Back to top" Button */}
+      {/* Floating Circular "Back to top" Button with Smooth Lenis Jump */}
       {scrolled && (
         <button
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          onClick={() => scrollTo(0, { duration: 1.2 })}
           aria-label="Back to top"
           className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl hover:shadow-2xl text-slate-700 hover:text-indigo-600 hover:scale-110 active:scale-95 transition-all fixed bottom-6 right-6 z-40 flex items-center justify-center group cursor-pointer animate-fade-in"
         >

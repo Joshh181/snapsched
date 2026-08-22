@@ -131,11 +131,17 @@ export const storageService = {
   getFriends(): FriendSchedule[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.FRIENDS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          // Filter out legacy demo friends
+          return parsed.filter((f: FriendSchedule) => !['friend-1', 'friend-2', 'demo-friend-1', 'demo-friend-2'].includes(f.id));
+        }
+      }
     } catch (e) {
       console.warn('Failed to read friends', e);
     }
-    return SAMPLE_FRIEND_SCHEDULES;
+    return [];
   },
 
   saveFriends(friends: FriendSchedule[]): void {
@@ -146,10 +152,22 @@ export const storageService = {
     }
   },
 
+  addFriend(friend: FriendSchedule): void {
+    const current = this.getFriends();
+    const updated = [...current.filter(f => f.id !== friend.id), friend];
+    this.saveFriends(updated);
+  },
+
+  deleteFriend(id: string): void {
+    const current = this.getFriends();
+    const updated = current.filter(f => f.id !== id);
+    this.saveFriends(updated);
+  },
+
   // Reset to default sample
   resetToSample(): ScheduleSet {
     this.saveActiveSchedule(INITIAL_SCHEDULE_SET);
-    this.saveFriends(SAMPLE_FRIEND_SCHEDULES);
+    this.saveFriends([]);
     this.saveCategories(DEFAULT_CATEGORIES);
     return INITIAL_SCHEDULE_SET;
   }

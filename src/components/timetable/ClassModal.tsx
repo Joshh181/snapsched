@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, User, Check, Tag, Trash2 } from 'lucide-react';
+import { X, MapPin, User, Check, Tag, Trash2, Briefcase, BookOpen, Clock } from 'lucide-react';
 import { ClassItem, DayAbbreviation, DAYS_OF_WEEK, CategoryItem } from '../../types/schedule';
 import { COLOR_PALETTES } from '../../data/sampleSchedules';
 import { storageService } from '../../services/storageService';
@@ -13,6 +13,103 @@ interface ClassModalProps {
   initialData?: ClassItem | null;
   activeCategory?: string;
 }
+
+interface CategoryFormConfig {
+  modalTitleAdd: string;
+  modalTitleEdit: string;
+  codeLabel: string;
+  codePlaceholder: string;
+  unitsLabel: string;
+  unitsPlaceholder: string;
+  unitsDefault: number;
+  nameLabel: string;
+  namePlaceholder: string;
+  roomLabel: string;
+  roomPlaceholder: string;
+  roomRequired: boolean;
+  personLabel: string;
+  personPlaceholder: string;
+  personIconType: 'user' | 'briefcase' | 'book';
+}
+
+const getCategoryFormConfig = (catName: string): CategoryFormConfig => {
+  const norm = (catName || 'School').toLowerCase();
+  if (norm === 'work') {
+    return {
+      modalTitleAdd: 'Add Work Shift / Task',
+      modalTitleEdit: 'Edit Work Shift',
+      codeLabel: 'Shift Tag / Code',
+      codePlaceholder: 'e.g. SHIFT-A, REMOTE, or DEV',
+      unitsLabel: 'Shift Hours (Hrs/wk)',
+      unitsPlaceholder: '4',
+      unitsDefault: 4,
+      nameLabel: 'Role / Job Title / Task',
+      namePlaceholder: 'e.g. Customer Support Shift or Development',
+      roomLabel: 'Workplace / Location',
+      roomPlaceholder: 'e.g. Remote / Zoom or Office 3F (optional)',
+      roomRequired: false,
+      personLabel: 'Supervisor / Manager / Client',
+      personPlaceholder: 'e.g. Team Lead Mark (optional)',
+      personIconType: 'briefcase',
+    };
+  }
+  if (norm === 'study') {
+    return {
+      modalTitleAdd: 'Add Study Session / Focus Goal',
+      modalTitleEdit: 'Edit Study Session',
+      codeLabel: 'Study Code / Subject Tag',
+      codePlaceholder: 'e.g. THESIS, CS 312, or CODE',
+      unitsLabel: 'Target Hours (Hrs)',
+      unitsPlaceholder: '2',
+      unitsDefault: 2,
+      nameLabel: 'Study Topic / Goal Description',
+      namePlaceholder: 'e.g. Algorithms & Data Structures Review',
+      roomLabel: 'Study Spot / Location',
+      roomPlaceholder: 'e.g. Library 3rd Floor, Cafe, or Home (optional)',
+      roomRequired: false,
+      personLabel: 'Study Buddy / Mentor',
+      personPlaceholder: 'e.g. Alex & Sarah or Self (optional)',
+      personIconType: 'book',
+    };
+  }
+  if (norm === 'personal') {
+    return {
+      modalTitleAdd: 'Add Personal Activity / Routine',
+      modalTitleEdit: 'Edit Personal Activity',
+      codeLabel: 'Activity Code / Tag',
+      codePlaceholder: 'e.g. GYM, ERRANDS, or HOBBY',
+      unitsLabel: 'Duration / Priority',
+      unitsPlaceholder: '1',
+      unitsDefault: 1,
+      nameLabel: 'Activity Name / Description',
+      namePlaceholder: 'e.g. Upper Body Workout or Grocery Run',
+      roomLabel: 'Location / Venue',
+      roomPlaceholder: 'e.g. Fitness Center, SM Mall, or Home (optional)',
+      roomRequired: false,
+      personLabel: 'Coach / Companion',
+      personPlaceholder: 'e.g. Coach Chris or Friends (optional)',
+      personIconType: 'user',
+    };
+  }
+  // Default: School
+  return {
+    modalTitleAdd: 'Add New Class / Subject',
+    modalTitleEdit: 'Edit Class / Subject',
+    codeLabel: 'Subject Code',
+    codePlaceholder: 'e.g. IT 311 or CS 101',
+    unitsLabel: 'Units / Credit',
+    unitsPlaceholder: '3',
+    unitsDefault: 3,
+    nameLabel: 'Subject Name / Description',
+    namePlaceholder: 'e.g. Web Systems & Technologies',
+    roomLabel: 'Room / Laboratory',
+    roomPlaceholder: 'e.g. CL-304 or IT-LAB 2',
+    roomRequired: true,
+    personLabel: 'Instructor / Professor',
+    personPlaceholder: 'e.g. Prof. Vance',
+    personIconType: 'user',
+  };
+};
 
 export const ClassModal: React.FC<ClassModalProps> = ({
   isOpen,
@@ -38,6 +135,8 @@ export const ClassModal: React.FC<ClassModalProps> = ({
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const formConfig = getCategoryFormConfig(category);
+
   useEffect(() => {
     setCategories(storageService.getCategories());
   }, [isOpen]);
@@ -58,10 +157,11 @@ export const ClassModal: React.FC<ClassModalProps> = ({
       setNotes(initialData.notes || '');
     } else {
       const defaultCat = activeCategory || 'School';
+      const initialConfig = getCategoryFormConfig(defaultCat);
       setCode('');
       setName('');
       setCategory(defaultCat);
-      setSection('BSIT 3-A');
+      setSection(defaultCat.toLowerCase() === 'school' ? 'BSIT 3-A' : '');
       setInstructor('');
       setRoom('');
       setDays(['M', 'W']);
@@ -69,7 +169,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
       setEndTime('09:30');
       const matched = storageService.getCategories().find((c) => c.name.toLowerCase() === defaultCat.toLowerCase());
       setColor(matched?.color || COLOR_PALETTES[0]);
-      setUnits(3);
+      setUnits(initialConfig.unitsDefault);
       setNotes('');
     }
     setErrors({});
@@ -93,13 +193,19 @@ export const ClassModal: React.FC<ClassModalProps> = ({
     if (matchedCat) {
       setColor(matchedCat.color);
     }
+    if (!initialData) {
+      const nextConfig = getCategoryFormConfig(selectedCatName);
+      setUnits(nextConfig.unitsDefault);
+    }
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!code.trim()) newErrors.code = 'Title / Code is required';
-    if (!name.trim()) newErrors.name = 'Description / Name is required';
-    if (!room.trim()) newErrors.room = 'Location / Room is required';
+    if (!code.trim()) newErrors.code = `${formConfig.codeLabel} is required`;
+    if (!name.trim()) newErrors.name = `${formConfig.nameLabel} is required`;
+    if (formConfig.roomRequired && !room.trim()) {
+      newErrors.room = `${formConfig.roomLabel} is required`;
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -108,13 +214,15 @@ export const ClassModal: React.FC<ClassModalProps> = ({
     e.preventDefault();
     if (!validate()) return;
 
+    const finalRoom = room.trim() || (category.toLowerCase() === 'work' ? 'Remote / Work' : category.toLowerCase() === 'personal' ? 'Personal' : 'General');
+
     const payload = {
       code: code.trim(),
       name: name.trim(),
       category: category.trim(),
       section: section.trim(),
       instructor: instructor.trim(),
-      room: room.trim(),
+      room: finalRoom,
       days,
       startTime,
       endTime,
@@ -168,7 +276,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
               style={{ backgroundColor: color, boxShadow: 'var(--shadow-xs)' }}
             />
             <h3 className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>
-              {initialData ? 'Edit Schedule Item' : 'Add New Schedule Item'}
+              {initialData ? formConfig.modalTitleEdit : formConfig.modalTitleAdd}
             </h3>
           </div>
           <div className="flex items-center gap-1.5">
@@ -215,7 +323,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => handleCategoryChange(cat.name)}
-                    className="px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5 transition-all"
+                    className="px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5 transition-all cursor-pointer"
                     style={{
                       background: isSelected ? 'var(--brand-50)' : 'var(--surface-secondary)',
                       color: isSelected ? 'var(--brand-800)' : 'var(--text-secondary)',
@@ -235,13 +343,13 @@ export const ClassModal: React.FC<ClassModalProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Code / Title <span style={{ color: 'var(--status-error)' }}>*</span>
+                {formConfig.codeLabel} <span style={{ color: 'var(--status-error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. IT 311 or WORK SHIFT"
+                placeholder={formConfig.codePlaceholder}
                 className={inputClasses}
                 style={{
                   ...inputStyle,
@@ -256,14 +364,15 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             </div>
             <div>
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Units / Load
+                {formConfig.unitsLabel}
               </label>
               <input
                 type="number"
                 min="0"
-                max="9"
+                max="99"
                 value={units}
                 onChange={(e) => setUnits(Number(e.target.value))}
+                placeholder={formConfig.unitsPlaceholder}
                 className={inputClasses}
                 style={inputStyle}
                 onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
@@ -275,13 +384,13 @@ export const ClassModal: React.FC<ClassModalProps> = ({
           {/* Subject / Activity Name */}
           <div>
             <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-              Description / Subject Name <span style={{ color: 'var(--status-error)' }}>*</span>
+              {formConfig.nameLabel} <span style={{ color: 'var(--status-error)' }}>*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Distributed Systems or Workout Routine"
+              placeholder={formConfig.namePlaceholder}
               className={inputClasses}
               style={{
                 ...inputStyle,
@@ -295,11 +404,11 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             )}
           </div>
 
-          {/* Room + Instructor */}
+          {/* Room / Workplace + Instructor / Supervisor */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Location / Room <span style={{ color: 'var(--status-error)' }}>*</span>
+                {formConfig.roomLabel} {formConfig.roomRequired && <span style={{ color: 'var(--status-error)' }}>*</span>}
               </label>
               <div className="relative">
                 <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
@@ -307,7 +416,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                   type="text"
                   value={room}
                   onChange={(e) => setRoom(e.target.value)}
-                  placeholder="e.g. LAB-304 / Fitness Center"
+                  placeholder={formConfig.roomPlaceholder}
                   className={inputClasses}
                   style={{
                     ...inputStyle,
@@ -324,15 +433,21 @@ export const ClassModal: React.FC<ClassModalProps> = ({
             </div>
             <div>
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Instructor / Trainer
+                {formConfig.personLabel}
               </label>
               <div className="relative">
-                <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                {formConfig.personIconType === 'briefcase' ? (
+                  <Briefcase className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                ) : formConfig.personIconType === 'book' ? (
+                  <BookOpen className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                ) : (
+                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                )}
                 <input
                   type="text"
                   value={instructor}
                   onChange={(e) => setInstructor(e.target.value)}
-                  placeholder="e.g. Prof. Vance"
+                  placeholder={formConfig.personPlaceholder}
                   className={inputClasses}
                   style={{ ...inputStyle, paddingLeft: '36px' }}
                   onFocus={(e) => Object.assign(e.target.style, { ...inputFocusStyle, paddingLeft: '36px' })}
